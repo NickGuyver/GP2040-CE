@@ -73,6 +73,18 @@
 #define USB_PERIPHERAL_PIN_ORDER 0
 
 
+// Force XInput mode and ignore all others
+#define DEFAULT_INPUT_MODE INPUT_MODE_XINPUT
+#define DEFAULT_INPUT_MODE_B1 -1
+#define DEFAULT_INPUT_MODE_B2 -1
+#define DEFAULT_INPUT_MODE_B3 -1
+#define DEFAULT_INPUT_MODE_B4 -1
+#define DEFAULT_INPUT_MODE_L1 -1
+#define DEFAULT_INPUT_MODE_L2 -1
+#define DEFAULT_INPUT_MODE_R1 -1
+#define DEFAULT_INPUT_MODE_R2 -1
+
+
 // On-board LED settings
 #define BOARD_LED_ENABLED 1
 #define BOARD_LED_TYPE ON_BOARD_LED_MODE_MODE_INDICATOR
@@ -81,8 +93,8 @@
 // Analog settings
 #define ANALOG_INPUT_ENABLED 1
 #define ANALOG_ADC_1_VRX 28
-#define ANALOG_ADC_1_VRY 29
-#define ANALOG_ADC_2_VRX 26
-#define ANALOG_ADC_2_VRY 27
+#define ANALOG_ADC_1_VRY 27
+#define ANALOG_ADC_2_VRX 29
+#define ANALOG_ADC_2_VRY 26
 
 #endif
