@@ -4,7 +4,6 @@
  */
 
 #include "drivers/xinput/XInputDriver.h"
-#include "drivers/xinput/XInputAuth.h"
 #include "drivers/shared/driverhelper.h"
 #include "storagemanager.h"
 
@@ -22,14 +21,15 @@
 #define DESC_EXTENDED_COMPATIBLE_ID_DESCRIPTOR 0x0004
 #define DESC_EXTENDED_PROPERTIES_DESCRIPTOR 0x0005
 
-uint8_t endpoint_in = 0;
-uint8_t endpoint_out = 0;
-uint8_t xinput_out_buffer[XINPUT_OUT_SIZE] = {};
+#define XINPUT_OUT_SIZE 32
 
-#include <stdio.h>
-#include "pico/stdlib.h"
+#define XINPUT_DESC_TYPE_RESERVED 0x21
+#define XINPUT_SECURITY_DESC_TYPE_RESERVED 0x41
 
-static bool authDriverPresent = false;
+static uint8_t endpoint_in = 0;
+static uint8_t endpoint_out = 0;
+static uint8_t xinput_out_buffer[XINPUT_OUT_SIZE] = {};
+static XInputAuthData * xinputAuthData = nullptr;
 
 // Move to Proto Enums
 typedef enum
@@ -57,31 +57,40 @@ static void xinput_reset(uint8_t rhport) {
 	(void)rhport;
 }
 
-static uint16_t xinput_open(uint8_t rhport, tusb_desc_interface_t const *itf_descriptor, uint16_t max_length)
-{
-	uint16_t driver_length = sizeof(tusb_desc_interface_t) + (itf_descriptor->bNumEndpoints * sizeof(tusb_desc_endpoint_t)) + 16;
+static uint16_t xinput_open(uint8_t rhport, tusb_desc_interface_t const *itf_descriptor, uint16_t max_length) {
+	uint16_t driver_length = 0;
+    // Xbox 360 Vendor USB Interfaces: Control, Audio, Plug-in, Security
+    if ( TUSB_CLASS_VENDOR_SPECIFIC == itf_descriptor->bInterfaceClass) {
+        driver_length = sizeof(tusb_desc_interface_t) + (itf_descriptor->bNumEndpoints * sizeof(tusb_desc_endpoint_t));
+        TU_VERIFY(max_length >= driver_length, 0);
 
-	TU_VERIFY(max_length >= driver_length, 0);
+        tusb_desc_interface_t *p_desc = (tusb_desc_interface_t *)itf_descriptor;
+        // Xbox 360 Interfaces (Control 0x01, Audio 0x02, Plug-in 0x03)
+        if (itf_descriptor->bInterfaceSubClass == 0x5D &&
+                ((itf_descriptor->bInterfaceProtocol == 0x01 ) ||
+                (itf_descriptor->bInterfaceProtocol == 0x02 ) ||
+                (itf_descriptor->bInterfaceProtocol == 0x03 )) ) {
+            // Get Xbox 360 Definition
+            p_desc = (tusb_desc_interface_t *)tu_desc_next(p_desc);
+            TU_VERIFY(XINPUT_DESC_TYPE_RESERVED == p_desc->bDescriptorType, 0);
+            driver_length += p_desc->bLength;
+            p_desc = (tusb_desc_interface_t *)tu_desc_next(p_desc);
+            // Control Endpoints are used for gamepad input/output
+            if ( itf_descriptor->bInterfaceProtocol == 0x01 ) {
+                TU_ASSERT(usbd_open_edpt_pair(rhport, (const uint8_t*)p_desc, itf_descriptor->bNumEndpoints,
+                            TUSB_XFER_INTERRUPT, &endpoint_out, &endpoint_in), 0);
+            }
+        // Xbox 360 Security Interface
+        } else if (itf_descriptor->bInterfaceSubClass == 0xFD &&
+                itf_descriptor->bInterfaceProtocol == 0x13) {
+            // Xinput reserved endpoint
+            //-------------- Xinput Descriptor --------------//
+            p_desc = (tusb_desc_interface_t *)tu_desc_next(p_desc);
+            TU_VERIFY(XINPUT_SECURITY_DESC_TYPE_RESERVED == p_desc->bDescriptorType, 0);
+            driver_length += p_desc->bLength;
+        }
+    }
 
-	uint8_t const *current_descriptor = tu_desc_next(itf_descriptor);
-	uint8_t found_endpoints = 0;
-	while ((found_endpoints < itf_descriptor->bNumEndpoints) && (driver_length <= max_length))
-	{
-		tusb_desc_endpoint_t const *endpoint_descriptor = (tusb_desc_endpoint_t const *)current_descriptor;
-		if (TUSB_DESC_ENDPOINT == tu_desc_type(endpoint_descriptor))
-		{
-			TU_ASSERT(usbd_edpt_open(rhport, endpoint_descriptor));
-
-			if (tu_edpt_dir(endpoint_descriptor->bEndpointAddress) == TUSB_DIR_IN)
-				endpoint_in = endpoint_descriptor->bEndpointAddress;
-			else
-				endpoint_out = endpoint_descriptor->bEndpointAddress;
-
-			++found_endpoints;
-		}
-
-		current_descriptor = tu_desc_next(current_descriptor);
-	}
 	return driver_length;
 }
 
@@ -90,32 +99,7 @@ static bool xinput_device_control_request(uint8_t rhport, uint8_t stage, tusb_co
 	(void)rhport;
 	(void)stage;
 	(void)request;
-/*
-	// if authentication is present
-	if ( authDriverPresent &&
-		request->bmRequestType == (USB_SETUP_DEVICE_TO_HOST | USB_SETUP_RECIPIENT_INTERFACE | USB_SETUP_TYPE_VENDOR)) {
-		switch(request->bRequest) {
-			case 0x81:
-				uint8_t serial[0x0B];
-				return sizeof(id_data_ms_controller);
-			case 0x82:
-				return 0;
-			case 0x83:
-				memcpy(requestBuffer, challenge_response, sizeof(challenge_response));
-				return sizeof(challenge_response);
-			case 0x84:
-				break;
-			case 0x86:
-				short state = 2;  // 1 = in-progress, 2 = complete
-				memcpy(&request->wValue, &state, sizeof(state));
-				return sizeof(state);
-			case 0x87:
-				break;
-			default:
-				break;
-		};
-	}
-*/
+
 	return true;
 }
 
@@ -166,29 +150,31 @@ void XInputDriver::initialize() {
 		.sof = NULL
 	};
 
-	authDriver = nullptr;
+	xAuthDriver = nullptr;
 }
 
 void XInputDriver::initializeAux() {
-	authDriver = nullptr;
+	xAuthDriver = nullptr;
 	// AUTH DRIVER NON-FUNCTIONAL FOR NOW
-	/*
 	GamepadOptions & gamepadOptions = Storage::getInstance().getGamepadOptions();
 	if ( gamepadOptions.xinputAuthType == InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB )  {
-		authDriver = new XInputAuth();
-		if ( authDriver->available() ) {
-			authDriver->initialize();
-			authDriverPresent = true; // for callbacks
+		xAuthDriver = new XInputAuth();
+		if ( xAuthDriver->available() ) {
+			xAuthDriver->initialize();
+            xinputAuthData = xAuthDriver->getAuthData();
 		}
-	}
-	*/
+    }
 }
 
 USBListener * XInputDriver::get_usb_auth_listener() {
-	if ( authDriver != nullptr && authDriver->available() ) {
-		return authDriver->getListener();
+	if ( xAuthDriver != nullptr && xAuthDriver->available() ) {
+		return xAuthDriver->getListener();
 	}
 	return nullptr;
+}
+
+bool XInputDriver::getAuthEnabled() {
+    return (xAuthDriver != nullptr);
 }
 
 void XInputDriver::process(Gamepad * gamepad) {
@@ -293,8 +279,8 @@ void XInputDriver::process(Gamepad * gamepad) {
 }
 
 void XInputDriver::processAux() {
-	if ( authDriver != nullptr && authDriver->available() ) {
-		((XInputAuth*)authDriver)->process();
+	if ( xAuthDriver != nullptr && xAuthDriver->available() ) {
+		xAuthDriver->process();
 	}
 }
 
@@ -304,12 +290,81 @@ uint16_t XInputDriver::get_report(uint8_t report_id, hid_report_type_t report_ty
 	return sizeof(XInputReport);
 }
 
-// Only PS4 does anything with set report
-void XInputDriver::set_report(uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {}
-
-// Only XboxOG and Xbox One use vendor control xfer cb
+// Only respond to vendor control xfers if we have a mounted x360 device
 bool XInputDriver::vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request) {
-	return false;
+  // Do nothing if we have no auth driver
+	if ( xAuthDriver == nullptr || !xAuthDriver->available() ) {
+        return false;
+	}
+
+    uint16_t len = 0;
+    if (request->bmRequestType_bit.direction == TUSB_DIR_IN) {
+        // Write IN data on control_stage_setup only
+        if (stage == CONTROL_STAGE_SETUP) {
+            uint16_t state = 1; // 1 = in-progress, 2 = complete
+            switch (request->bRequest) {
+                    case XSM360_GET_SERIAL:
+                        // Stall if we don't have a dongle ready
+                        if ( xinputAuthData->dongle_ready == false ) {
+                            return false;
+                        }
+                        len = X360_AUTHLEN_DONGLE_SERIAL;
+                        memcpy(tud_buffer, xinputAuthData->dongleSerial, len);
+                        break;
+                    case XSM360_RESPOND_CHALLENGE:
+                        if ( xinputAuthData->xinputState == GPAuthState::send_auth_dongle_to_console ) {
+                            memcpy(tud_buffer, xinputAuthData->passthruBuffer, xinputAuthData->passthruBufferLen);
+                            len = xinputAuthData->passthruBufferLen;
+                        } else {
+                            // Stall if we don't have a dongle ready
+                            return false;
+                        }
+                        break;
+                    case XSM360_AUTH_KEEPALIVE:
+                        len = 0;
+                        break;
+                    case XSM360_REQUEST_STATE:
+                        // State Ready = 2, Not-Ready = 1
+                        if ( xinputAuthData->xinputState == GPAuthState::send_auth_dongle_to_console ) {
+                            state = 2;
+                        } else {
+                            state = 1;
+                        }
+                        memcpy(tud_buffer, &state, sizeof(state));
+                        len = sizeof(state);
+                        break;
+                    default:
+                        break;
+            };
+            tud_control_xfer(rhport, request, tud_buffer, len);
+        }
+    } else if (request->bmRequestType_bit.direction == TUSB_DIR_OUT) {
+        if (stage == CONTROL_STAGE_SETUP ) { // Pass on output setup in DIR OUT stage
+            tud_control_xfer(rhport, request, tud_buffer, request->wLength);
+        } else if ( stage == CONTROL_STAGE_DATA ) {
+            // Buf is filled, we can save the data to our auth
+            switch (request->bRequest) {
+                    case XSM360AuthRequest::XSM360_INIT_AUTH:
+                        if ( xinputAuthData->xinputState == GPAuthState::auth_idle_state ) {
+                            memcpy(xinputAuthData->passthruBuffer, tud_buffer, request->wLength);
+                            xinputAuthData->passthruBufferLen = request->wLength;
+                            xinputAuthData->passthruBufferID = XSM360AuthRequest::XSM360_INIT_AUTH;
+                            xinputAuthData->xinputState = GPAuthState::send_auth_console_to_dongle;
+                        }
+                        break;
+                    case XSM360AuthRequest::XSM360_VERIFY_AUTH:
+                        memcpy(xinputAuthData->passthruBuffer, tud_buffer, request->wLength);
+                        xinputAuthData->passthruBufferLen = request->wLength;
+                        xinputAuthData->passthruBufferID = XSM360AuthRequest::XSM360_VERIFY_AUTH;
+                        xinputAuthData->xinputState = GPAuthState::send_auth_console_to_dongle;
+                        break;
+                    default:
+                        break;
+            };
+        }
+    }
+
+    return true;
 }
 
 const uint16_t * XInputDriver::get_descriptor_string_cb(uint8_t index, uint16_t langid) {

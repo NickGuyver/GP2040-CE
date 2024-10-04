@@ -6,9 +6,11 @@ import * as yup from 'yup';
 import { Trans, useTranslation } from 'react-i18next';
 import JSEncrypt from 'jsencrypt';
 import isNil from 'lodash/isNil';
-import ContextualHelpOverlay from '../Components/ContextualHelpOverlay';
 
+import useProfilesStore from '../Store/useProfilesStore';
 import { AppContext } from '../Contexts/AppContext';
+
+import ContextualHelpOverlay from '../Components/ContextualHelpOverlay';
 import KeyboardMapper, { validateMappings } from '../Components/KeyboardMapper';
 import Section from '../Components/Section';
 import WebApi, { baseButtonMappings } from '../Services/WebApi';
@@ -120,7 +122,13 @@ const SHA256 = (ascii) => {
 };
 
 const INPUT_MODES = [
-	{ labelKey: 'input-mode-options.xinput', value: 0, group: 'primary' }, //, authentication: ['none', 'usb'] }, AUTH WIP
+	{
+		labelKey: 'input-mode-options.xinput',
+		value: 0,
+		group: 'primary',
+		optional: ['usb'],
+		authentication: ['none', 'usb'],
+	},
 	{
 		labelKey: 'input-mode-options.nintendo-switch',
 		value: 1,
@@ -471,11 +479,17 @@ export default function SettingsPage() {
 		buttonLabels,
 		setButtonLabels,
 		getAvailablePeripherals,
-		getSelectedPeripheral,
-		getAvailableAddons,
-		updateAddons,
 		updatePeripherals,
 	} = useContext(AppContext);
+
+	const fetchProfiles = useProfilesStore((state) => state.fetchProfiles);
+	const profiles = useProfilesStore((state) => state.profiles);
+
+	useEffect(() => {
+		fetchProfiles();
+		updatePeripherals();
+	}, []);
+
 	const [saveMessage, setSaveMessage] = useState('');
 	const [warning, setWarning] = useState({ show: false, acceptText: '' });
 	const [validated, setValidated] = useState(false);
@@ -955,6 +969,28 @@ export default function SettingsPage() {
 						)}
 					</div>
 				);
+			case 'input-mode-options.xinput':
+				return (
+					<div className="row mb-3">
+						{generateAuthSelection(
+							inputMode,
+							t('SettingsPage:auth-settings-label'),
+							'xinputAuthType',
+							values.xinputAuthType,
+							errors.xinputAuthType,
+							handleChange,
+						)}
+						<Row className="mb-3">
+							<Col sm={10}>
+								<Trans
+									ns="SettingsPage"
+									i18nKey="xinput-mode-text"
+									components={{ span: <span className="text-success" /> }}
+								/>
+							</Col>
+						</Row>
+					</div>
+				);
 			case 'input-mode-options.xbone':
 				return (
 					<div className="row mb-3">
@@ -1073,11 +1109,6 @@ export default function SettingsPage() {
 	const getKeyMappingForButton = (button) => keyMappings[button];
 
 	const { t } = useTranslation('');
-
-	useEffect(() => {
-		updateAddons();
-		updatePeripherals();
-	}, []);
 
 	const translatedInputBootModes = translateArray(
 		checkRequiredArray(INPUT_BOOT_MODES),
@@ -1285,7 +1316,7 @@ export default function SettingsPage() {
 													</Form.Group>
 													<Form.Group className="row mb-3">
 														<Form.Label>
-															{t('SettingsPage:profile-number-label')}
+															{t('SettingsPage:profile-label')}
 														</Form.Label>
 														<Col sm={3}>
 															<Form.Select
@@ -1295,12 +1326,17 @@ export default function SettingsPage() {
 																onChange={handleChange}
 																isInvalid={errors.profileNumber}
 															>
-																{[1, 2, 3, 4].map((i) => (
+																{profiles.map((profile, index) => (
 																	<option
-																		key={`button-profileNumber-option-${i}`}
-																		value={i}
+																		key={`button-profileNumber-option-${
+																			index + 1
+																		}`}
+																		value={index + 1}
 																	>
-																		{i}
+																		{profile.profileLabel ||
+																			t('PinMapping:profile-label-default', {
+																				profileNumber: index + 1,
+																			})}
 																	</option>
 																))}
 															</Form.Select>
@@ -1417,7 +1453,7 @@ export default function SettingsPage() {
 													<div id="Hotkeys" hidden={values.lockHotkeys}>
 														{Object.keys(hotkeyFields).map((o, i) => (
 															<Form.Group
-																key={`hotkey-${i}`}
+																key={`hotkey-${i}-base`}
 																className="row mb-3"
 															>
 																<Col sm="auto">

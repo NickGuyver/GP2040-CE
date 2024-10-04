@@ -19,7 +19,6 @@
 #include "addons/focus_mode.h"
 #include "addons/i2canalog1219.h"
 #include "addons/display.h"
-#include "addons/jslider.h"
 #include "addons/keyboard_host.h"
 #include "addons/neopicoleds.h"
 #include "addons/playernum.h"
@@ -543,6 +542,7 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.analogOptions, auto_calibrate, !!AUTO_CALIBRATE_ENABLED);
     INIT_UNSET_PROPERTY(config.addonOptions.analogOptions, analog_smoothing, !!ANALOG_SMOOTHING_ENABLED);
     INIT_UNSET_PROPERTY(config.addonOptions.analogOptions, smoothing_factor, !!SMOOTHING_FACTOR);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogOptions, analog_error, ANALOG_ERROR);
 
     // addonOptions.turboOptions
     INIT_UNSET_PROPERTY(config.addonOptions.turboOptions, enabled, !!TURBO_ENABLED);
@@ -564,14 +564,6 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.turboOptions, shmupBtnMask3, SHMUP_BUTTON3);
     INIT_UNSET_PROPERTY(config.addonOptions.turboOptions, shmupBtnMask4, SHMUP_BUTTON4);
     INIT_UNSET_PROPERTY(config.addonOptions.turboOptions, shmupMixMode, SHMUP_MIX_MODE);
-
-    // addonOptions.sliderOptions
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, enabled, !!JSLIDER_ENABLED);
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, deprecatedPinSliderOne, (Pin_t)-1);
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, deprecatedPinSliderTwo, (Pin_t)-1);
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, deprecatedModeOne, SLIDER_MODE_ONE);
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, deprecatedModeTwo, SLIDER_MODE_TWO);
-    INIT_UNSET_PROPERTY(config.addonOptions.sliderOptions, modeDefault, SLIDER_MODE_ZERO);
 
     // addonOptions.reverseOptions
     INIT_UNSET_PROPERTY(config.addonOptions.reverseOptions, enabled, !!REVERSE_ENABLED);
@@ -808,7 +800,7 @@ void gpioMappingsMigrationCore(Config& config)
     PinMappings& deprecatedPinMappings = config.deprecatedPinMappings;
     ExtraButtonOptions& extraButtonOptions = config.addonOptions.deprecatedExtraButtonOptions;
     DualDirectionalOptions& ddiOptions = config.addonOptions.dualDirectionalOptions;
-    SliderOptions& jsSliderOptions = config.addonOptions.sliderOptions;
+    SliderOptions& jsSliderOptions = config.addonOptions.deprecatedSliderOptions;
     SOCDSliderOptions& socdSliderOptions = config.addonOptions.socdSliderOptions;
     PeripheralOptions& peripheralOptions = config.peripheralOptions;
     TiltOptions& tiltOptions = config.addonOptions.tiltOptions;
@@ -1246,6 +1238,16 @@ void gpioMappingsMigrationCore(Config& config)
     config.migrations.gpioMappingsMigrated = true;
 }
 
+// if the user previously had the JS slider addon enabled, copy its default to the
+// core gamepad setting, since the functionality is within the core now
+void migrateJSliderToCore(Config& config)
+{
+    if (config.addonOptions.deprecatedSliderOptions.enabled) {
+        config.gamepadOptions.dpadMode = config.addonOptions.deprecatedSliderOptions.deprecatedModeDefault;
+        config.addonOptions.deprecatedSliderOptions.enabled = false;
+    }
+}
+
 // populate the alternative gpio mapping sets, aka profiles, with
 // the old values or whatever is in the core mappings
 // NOTE: this also handles initializations for a blank config! if/when the deprecated
@@ -1340,6 +1342,34 @@ void migrateAuthenticationMethods(Config& config) {
     if ( xbonePassthroughOptions.enabled == true ) { // Xbox One add-on "on", USB pass through is assumed
         xbonePassthroughOptions.enabled = false; // disable and go on our way
     }
+}
+
+// enable profiles that have real data in them (profile 1 is always enabled)
+// note that profiles 2-4 are no longer populated with profile 1's data on a fresh
+// config, and this is checking previous configs with non-copy mappings to enable them
+void profileEnabledFlagsMigration(Config& config) {
+    config.gpioMappings.enabled = true;
+    for (uint8_t profileNum = 0; profileNum < config.profileOptions.gpioMappingsSets_count; profileNum++) {
+        if (!config.profileOptions.gpioMappingsSets[profileNum].pins_count) {
+            // uninitialized profile, skip it and leave it disabled
+            config.profileOptions.gpioMappingsSets[profileNum].enabled = false;
+            continue;
+        }
+        for (uint8_t pinNum = 0; pinNum < config.gpioMappings.pins_count; pinNum++) {
+            // check each pin: if the alt. mapping pin is different than the base (profile 1)
+            // mapping, enable the profile and check the next one
+            if (config.gpioMappings.pins[pinNum].action !=
+                        config.profileOptions.gpioMappingsSets[profileNum].pins[pinNum].action ||
+                    config.gpioMappings.pins[pinNum].customButtonMask !=
+                        config.profileOptions.gpioMappingsSets[profileNum].pins[pinNum].customButtonMask ||
+                    config.gpioMappings.pins[pinNum].customDpadMask !=
+                        config.profileOptions.gpioMappingsSets[profileNum].pins[pinNum].customDpadMask) {
+                config.profileOptions.gpioMappingsSets[profileNum].enabled = true;
+                break;
+            }
+        }
+    }
+    config.migrations.profileEnabledFlagsMigrated = true;
 }
 
 void migrateMacroPinsToGpio(Config& config) {
@@ -1520,9 +1550,9 @@ void ConfigUtils::load(Config& config)
     if (!config.migrations.gpioMappingsMigrated)
         gpioMappingsMigrationCore(config);
 
-    // Run button profile migrations
-    if (!config.migrations.buttonProfilesMigrated)
-        gpioMappingsMigrationProfiles(config);
+    // Run migration to enable or disable pre-existing profiles
+    if (!config.migrations.profileEnabledFlagsMigrated)
+        profileEnabledFlagsMigration(config);
 
     // following migrations are simple enough to not need a protobuf boolean to track
     // Migrate turbo into GpioMappings
@@ -1531,6 +1561,8 @@ void ConfigUtils::load(Config& config)
     migrateAuthenticationMethods(config);
     // Macro pins to gpio
     migrateMacroPinsToGpio(config);
+    // Migrate old JS slider add-on to core
+    migrateJSliderToCore(config);
 
     // Update boardVersion, in case we migrated from an older version
     strncpy(config.boardVersion, GP2040VERSION, sizeof(config.boardVersion));
@@ -2162,7 +2194,6 @@ bool ConfigUtils::fromJSON(Config& config, const char* data, size_t dataLen)
 
     // we need to run migrations here too, in case the json document changed pins or things derived from pins
     gpioMappingsMigrationCore(config);
-    gpioMappingsMigrationProfiles(config);
     migrateTurboPinToGpio(config);
     migrateAuthenticationMethods(config);
     migrateMacroPinsToGpio(config);
