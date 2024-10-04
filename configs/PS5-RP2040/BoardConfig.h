@@ -93,8 +93,8 @@
 // Analog settings
 #define ANALOG_INPUT_ENABLED 1
 #define ANALOG_ADC_1_VRX 28
-#define ANALOG_ADC_1_VRY 27
-#define ANALOG_ADC_2_VRX 29
+#define ANALOG_ADC_1_VRY 29
+#define ANALOG_ADC_2_VRX 27
 #define ANALOG_ADC_2_VRY 26
 
 #endif
