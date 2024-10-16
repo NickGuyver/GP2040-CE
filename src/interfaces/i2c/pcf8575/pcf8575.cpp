@@ -7,14 +7,18 @@ void PCF8575::begin() {
 }
 
 void PCF8575::reset(){
-    send(initialValue);
+    send(0x48FBBF);
+    send(0x46FBBF);
+    send(0x06FFBF);
+    send(0x02FFFF);
 }
 
-void PCF8575::send(uint16_t value) {
+void PCF8575::send(uint32_t value) {
     dataSent = value;
-    uc[0] = ((dataSent >> 0) & 0x00FF);
+    uc[0] = ((dataSent >> 16) & 0x00FF);
     uc[1] = ((dataSent >> 8) & 0x00FF);
-    i2c->write(address, uc, 2);
+    uc[2] = ((dataSent >> 0) & 0x00FF);
+    i2c->write(address, uc, 3);
 }
 
 uint16_t PCF8575::receive() {

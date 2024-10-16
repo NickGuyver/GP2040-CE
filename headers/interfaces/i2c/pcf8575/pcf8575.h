@@ -32,7 +32,7 @@ class PCF8575 : public I2CDeviceBase {
         void setI2C(PeripheralI2C *i2cController) { this->i2c = i2cController; }
         void setAddress(uint8_t addr) { this->address = addr; }
 
-        void send(uint16_t value);
+        void send(uint32_t value);
         uint16_t receive();
 
         uint16_t pins() { return dataReceived; }
@@ -43,7 +43,7 @@ class PCF8575 : public I2CDeviceBase {
         const uint16_t initialValue = 0xFFFF;
         uint8_t uc[128];
 
-        uint16_t dataSent;
+        uint32_t dataSent;
         uint16_t dataReceived = initialValue;
     protected:
         PeripheralI2C* i2c = nullptr;
