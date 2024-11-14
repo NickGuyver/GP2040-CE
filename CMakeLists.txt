@@ -4,6 +4,8 @@ include(CMakePrintHelpers)
 # enable compile commands for use by IDE autocompletion
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(GP2040_BOARDCONFIG XS-2040)
+
 # initialize the SDK based on PICO_SDK_PATH
 # note: this must happen before project()
 include(pico_sdk_import.cmake)
