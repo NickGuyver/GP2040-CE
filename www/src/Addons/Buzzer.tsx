@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormCheck, Row } from 'react-bootstrap';
 import * as yup from 'yup';
@@ -36,7 +35,16 @@ export const buzzerState = {
 const Buzzer = ({ values, errors, handleChange, handleCheckbox }) => {
 	const { t } = useTranslation();
 	return (
-		<Section title={t('AddonsConfig:buzzer-speaker-header-text')}>
+		<Section title={
+			<a
+				href="https://gp2040-ce.info/add-ons/buzzer-speaker"
+				target="_blank"
+				className="text-reset text-decoration-none"
+			>
+				{t('AddonsConfig:buzzer-speaker-header-text')}
+			</a>
+		}
+		>
 			<div
 				id="BuzzerSpeakerAddonOptions"
 				hidden={!values.BuzzerSpeakerAddonEnabled}

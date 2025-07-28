@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormCheck } from 'react-bootstrap';
 import * as yup from 'yup';
@@ -29,12 +28,23 @@ export const bootselState = {
 const Bootsel = ({ values, errors, handleChange, handleCheckbox }) => {
 	const { t } = useTranslation();
 	return (
-		<Section title={t('AddonsConfig:bootsel-header-text')}>
+		<Section title={
+			<a
+				href="https://gp2040-ce.info/add-ons/bootsel-button"
+				target="_blank"
+				className="text-reset text-decoration-none"
+			>
+				{t('AddonsConfig:bootsel-header-text')}
+			</a>
+		}
+		>
 			<div
 				id="BootselButtonAddonOptions"
 				hidden={!values.BootselButtonAddonEnabled}
 			>
-				<p>{t('AddonsConfig:bootsel-sub-header-text')}</p>
+				<div className="alert alert-info" role="alert">
+					{t('AddonsConfig:bootsel-sub-header-text')}
+				</div>
 				<FormSelect
 					label={t('AddonsConfig:bootsel-button-pin-label')}
 					name="bootselButtonMap"
