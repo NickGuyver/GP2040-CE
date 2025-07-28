@@ -57,6 +57,7 @@ export default {
 	},
 	'profile-label': 'Profile',
 	'debounce-delay-label': 'Debounce Delay in milliseconds',
+	'mini-menu-gamepad-input': 'Use Gamepad Input for Display Mini Menu',
 	'ps4-mode-explanation-text':
 		'PS4 mode allows GP2040-CE to run as an authenticated PS4 controller.',
 	'ps4-mode-warning-text':
@@ -79,7 +80,7 @@ export default {
 	'xbone-mode-text':
 		'<span>INFO:</span> Xbox One requires a USB host connection and USB dongle to properly authenticate in Xbox One mode.',
 	'xinput-mode-text':
-		'<span>INFO:</span> Xinput will work on a PC without any authentication.  If you would like to on a Xbox 360 please choose USB authentication and attach an appropriate dongle.',
+		'<span>INFO:</span> XInput mode will work on a retail Xbox 360 console without a dongle. Only select USB if you would like to use an external dongle for authentication.',
 	'hotkey-settings-label': 'Hotkey Settings',
 	'hotkey-settings-sub-header':
 		'The <strong>Fn</strong> slider provides a mappable Function button in the <link_pinmap>Pin Mapping</link_pinmap> page. By selecting the <strong>Fn</strong> slider option, the Function button must be held along with the selected hotkey settings. <br /> Additionally, select <strong>None</strong> from the dropdown to unassign any button.',
@@ -126,9 +127,19 @@ export default {
 		'load-profile-2': 'Load Profile #2',
 		'load-profile-3': 'Load Profile #3',
 		'load-profile-4': 'Load Profile #4',
+		'load-profile-5': 'Load Profile #5',
+		'load-profile-6': 'Load Profile #6',
 		'reboot-default': 'Reboot GP2040-CE',
+		'save-config': 'Save Config',
 		'next-profile': 'Next Profile',
 		'previous-profile': 'Previous Profile',
+		'menu-nav-up': 'Menu Up',
+		'menu-nav-down': 'Menu Down',
+		'menu-nav-left': 'Menu Left',
+		'menu-nav-right': 'Menu Right',
+		'menu-nav-select': 'Menu Select',
+		'menu-nav-back': 'Menu Back',
+		'menu-nav-toggle': 'Menu Toggle',
 	},
 	'forced-setup-mode-label': 'Forced Setup Mode',
 	'forced-setup-mode-options': {
@@ -145,4 +156,15 @@ export default {
 	'keyboard-mapping-header-text': 'Keyboard Mapping',
 	'keyboard-mapping-sub-header-text':
 		'Use the form below to reconfigure your button-to-key mapping.',
+	'usb-override': {
+		'advanced-override': '⚠️ Advanced USB Override',
+		'invalid-warning-danger':
+			'DANGER: Invalid USB parameters will cause your input modes to not function!',
+		'product-name': 'Product Name',
+		manufacturer: 'Manufacturer',
+		version: 'Version',
+		'physical-warning-danger': '⚡ Override Physical IDs ⚡ ',
+		'product-id': 'Product ID',
+		'vendor-id': 'Vendor ID',
+	},
 };

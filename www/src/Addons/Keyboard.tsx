@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { FormCheck, Row, FormLabel } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
@@ -6,18 +6,12 @@ import * as yup from 'yup';
 
 import Section from '../Components/Section';
 
-import FormControl from '../Components/FormControl';
 import FormSelect from '../Components/FormSelect';
-import KeyboardMapper, { validateMappings } from '../Components/KeyboardMapper';
+import KeyboardMapper from '../Components/KeyboardMapper';
 import { baseButtonMappings } from '../Services/WebApi';
 import { AppContext } from '../Contexts/AppContext';
 
-import {
-	BUTTON_ACTIONS,
-	PIN_DIRECTIONS,
-	PinActionValues,
-	PinDirectionValues,
-} from '../Data/Pins';
+import { BUTTON_ACTIONS } from '../Data/Pins';
 import { BUTTON_MASKS_OPTIONS } from '../Data/Buttons';
 
 export const keyboardScheme = {
@@ -56,11 +50,6 @@ export const keyboardState = {
 	KeyboardHostAddonEnabled: 0,
 };
 
-const options = Object.entries(BUTTON_ACTIONS).map(([key, value]) => ({
-	label: key,
-	value,
-}));
-
 const excludedButtons = [
 	'E1',
 	'E2',
@@ -85,14 +74,11 @@ const Keyboard = ({
 }) => {
 	const { buttonLabels, getAvailablePeripherals } = useContext(AppContext);
 	const { t } = useTranslation();
-	const [validated, setValidated] = useState(false);
 
 	const handleKeyChange = (values, setFieldValue) => (value, button) => {
 		const newMappings = { ...values.keyboardHostMap };
 		newMappings[button].key = value;
-		const mappings = validateMappings(newMappings, t);
-		setFieldValue('keyboardHostMap', mappings);
-		setValidated(true);
+		setFieldValue('keyboardHostMap', newMappings);
 	};
 
 	const getKeyMappingForButton = (values) => (button) => {
@@ -100,13 +86,25 @@ const Keyboard = ({
 	};
 
 	return (
-		<Section title={t('AddonsConfig:keyboard-host-header-text')}>
+		<Section title={
+			<a
+				href="https://gp2040-ce.info/add-ons/keyboard-host"
+				target="_blank"
+				className="text-reset text-decoration-none"
+			>
+				{t('AddonsConfig:keyboard-host-header-text')}
+			</a>
+		}
+		>
 			<div
 				id="KeyboardHostAddonOptions"
 				hidden={
 					!(values.KeyboardHostAddonEnabled && getAvailablePeripherals('usb'))
 				}
 			>
+				<div className="alert alert-info" role="alert">
+					The D+ and Enable 5V pins and GPIO Pin Order are configured in <a href="../peripheral-mapping" className="alert-link">Peripheral Mapping</a>
+				</div>
 				<Row className="mb-3">
 					<p>{t('AddonsConfig:keyboard-host-sub-header-text')}</p>
 					<div className="mb-2">
@@ -114,7 +112,6 @@ const Keyboard = ({
 							buttonLabels={buttonLabels}
 							excludeButtons={excludedButtons}
 							handleKeyChange={handleKeyChange(values, setFieldValue)}
-							validated={validated}
 							getKeyMappingForButton={getKeyMappingForButton(values)}
 						/>
 					</div>
@@ -194,7 +191,7 @@ const Keyboard = ({
 						i18nKey="peripheral-toggle-unavailable"
 						values={{ name: 'USB' }}
 					>
-						<NavLink exact="true" to="/peripheral-mapping">
+						<NavLink to="/peripheral-mapping">
 							{t('PeripheralMapping:header-text')}
 						</NavLink>
 					</Trans>

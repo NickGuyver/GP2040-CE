@@ -1,5 +1,4 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { FormCheck, Row } from 'react-bootstrap';
 import * as yup from 'yup';
 
@@ -14,10 +13,6 @@ export const focusModeScheme = {
 		.number()
 		.required()
 		.label('Focus Mode Add-On Enabled'),
-	focusModePin: yup
-		.number()
-		.label('Focus Mode Pin')
-		.validatePinWhenValue('FocusModeAddonEnabled'),
 	focusModeButtonLockEnabled: yup
 		.number()
 		.label('Focus Mode Button Lock Enabled')
@@ -46,107 +41,111 @@ const FocusMode = ({
 }) => {
 	const { t } = useTranslation();
 	return (
-		<Section title={t('AddonsConfig:focus-mode-header-text')}>
+		<Section title={
+			<a
+				href="https://gp2040-ce.info/add-ons/focus-mode"
+				target="_blank"
+				className="text-reset text-decoration-none"
+			>
+				{t('AddonsConfig:focus-mode-header-text')}
+			</a>
+		}
+		>
 			<div id="FocusModeAddonOptions" hidden={!values.FocusModeAddonEnabled}>
-				<Row className="mb-3">
-					<FormControl
-						type="number"
-						label={t('AddonsConfig:focus-mode-pin-label')}
-						name="focusModePin"
-						className="form-select-sm col-3"
-						groupClassName="col-sm-3 mb-3"
-						value={values.focusModePin}
-						error={errors.focusModePin}
-						isInvalid={errors.focusModePin}
-						onChange={handleChange}
-						min={-1}
-						max={29}
+				<div className="alert alert-info" role="alert">
+					<Trans
+						ns="AddonsConfig"
+						i18nKey='AddonsConfig:pin-config-moved-to-core-text'
+						components={[
+							<a
+								key="0"
+								href="../pin-mapping"
+								className="alert-link"
+								target="_blank"
+							/>
+						]}
 					/>
-					<div className="col-sm-3">
-						<FormCheck
-							label={t('Common:lock-macro')}
-							className="form-check-sm"
-							type="switch"
-							reverse
-							id="FocusModeAddonMacroButton"
-							isInvalid={false}
-							checked={Boolean(values.focusModeMacroLockEnabled)}
-							onChange={(e) => {
-								handleCheckbox('focusModeMacroLockEnabled', values);
-								handleChange(e);
-							}}
-						/>
-					</div>
-					<div className="col-sm-3">
-						<FormCheck
-							label={t('Common:lock-buttons')}
-							className="form-check-sm"
-							type="switch"
-							reverse
-							id="FocusModeAddonButton"
-							isInvalid={false}
-							checked={Boolean(values.focusModeButtonLockEnabled)}
-							onChange={(e) => {
-								handleCheckbox('focusModeButtonLockEnabled', values);
-								handleChange(e);
-							}}
-						/>
-					</div>
-					<Row>
-						{BUTTON_MASKS_OPTIONS.map(
-							(mask) =>
-								Boolean(values.focusModeButtonLockMask & mask.value) && (
-									<FormSelect
-										key={`focusModeButtonLockMask-${mask.label}`}
-										name="focusModeButtonLockMask"
-										className="form-select-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.focusModeButtonLockMask & mask.value}
-										error={errors.focusModeButtonLockMask}
-										isInvalid={errors.focusModeButtonLockMask}
-										onChange={(e) => {
-											setFieldValue(
-												'focusModeButtonLockMask',
-												(values.focusModeButtonLockMask ^ mask.value) |
-													e.target.value,
-											);
-										}}
-									>
-										{BUTTON_MASKS_OPTIONS.map((o, i) => (
-											<option
-												key={`focusModeButtonLockMask-option-${i}`}
-												value={o.value}
-											>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-								),
-						)}
-						<FormSelect
-							name="focusModeButtonLockMask"
-							className="form-select-sm"
-							groupClassName="col-sm-3 mb-3"
-							value={0}
-							error={errors.focusModeButtonLockMask}
-							isInvalid={errors.focusModeButtonLockMask}
-							onChange={(e) => {
-								setFieldValue(
-									'focusModeButtonLockMask',
-									values.focusModeButtonLockMask | e.target.value,
-								);
-							}}
-						>
-							{BUTTON_MASKS_OPTIONS.map((o, i) => (
-								<option
-									key={`focusModeButtonLockMask-option-${i}`}
-									value={o.value}
+				</div>
+				<Row className="mb-3">
+					<FormCheck
+						label={t('Common:lock-macro')}
+						className="col-sm-3 ms-3"
+						type="switch"
+						id="FocusModeAddonMacroButton"
+						isInvalid={false}
+						checked={Boolean(values.focusModeMacroLockEnabled)}
+						onChange={(e) => {
+							handleCheckbox('focusModeMacroLockEnabled', values);
+							handleChange(e);
+						}}
+					/>
+					<FormCheck
+						label={t('Common:lock-buttons')}
+						className="col-sm-3 ms-3"
+						type="switch"
+						id="FocusModeAddonButton"
+						isInvalid={false}
+						checked={Boolean(values.focusModeButtonLockEnabled)}
+						onChange={(e) => {
+							handleCheckbox('focusModeButtonLockEnabled', values);
+							handleChange(e);
+						}}
+					/>
+				</Row>
+				<Row className="mb-3">
+					{BUTTON_MASKS_OPTIONS.map(
+						(mask) =>
+							Boolean(values.focusModeButtonLockMask & mask.value) && (
+								<FormSelect
+									key={`focusModeButtonLockMask-${mask.label}`}
+									name="focusModeButtonLockMask"
+									className="form-select-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.focusModeButtonLockMask & mask.value}
+									error={errors.focusModeButtonLockMask}
+									isInvalid={errors.focusModeButtonLockMask}
+									onChange={(e) => {
+										setFieldValue(
+											'focusModeButtonLockMask',
+											(values.focusModeButtonLockMask ^ mask.value) |
+												e.target.value,
+										);
+									}}
 								>
-									{o.label}
-								</option>
-							))}
-						</FormSelect>
-					</Row>
+									{BUTTON_MASKS_OPTIONS.map((o, i) => (
+										<option
+											key={`focusModeButtonLockMask-option-${i}`}
+											value={o.value}
+										>
+											{o.label}
+										</option>
+									))}
+								</FormSelect>
+							),
+					)}
+					<FormSelect
+						name="focusModeButtonLockMask"
+						className="form-select-sm"
+						groupClassName="col-sm-3 mb-3"
+						value={0}
+						error={errors.focusModeButtonLockMask}
+						isInvalid={errors.focusModeButtonLockMask}
+						onChange={(e) => {
+							setFieldValue(
+								'focusModeButtonLockMask',
+								values.focusModeButtonLockMask | e.target.value,
+							);
+						}}
+					>
+						{BUTTON_MASKS_OPTIONS.map((o, i) => (
+							<option
+								key={`focusModeButtonLockMask-option-${i}`}
+								value={o.value}
+							>
+								{o.label}
+							</option>
+						))}
+					</FormSelect>
 				</Row>
 			</div>
 			<FormCheck
