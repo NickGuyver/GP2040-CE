@@ -108,7 +108,6 @@ export const AppContextProvider = ({ children, ...props }) => {
 		buttonLabelType: newType,
 		swapTpShareLabels: newSwap,
 	}) => {
-		console.log('buttonLabelType is', newType);
 		newType && localStorage.setItem('buttonLabelType', newType);
 		newSwap !== undefined &&
 			localStorage.setItem('swapTpShareLabels', parseBoolean(newSwap));
@@ -189,29 +188,35 @@ export const AppContextProvider = ({ children, ...props }) => {
 	);
 	const [expansionPins, setExpansionPins] = useState({});
 
+	const [HETriggerOptions, setHETriggerOptions] = useState({});
+
 	const updateUsedPins = async () => {
 		const data = await WebApi.getUsedPins(setLoading);
 		setUsedPins(data.usedPins);
-		console.log('usedPins updated:', data.usedPins);
 		return data;
 	};
 
 	const updateExpansionPins = async () => {
 		const data = await WebApi.getExpansionPins(setLoading);
 		setExpansionPins(data);
-		console.log('expansionPins updated:', data);
+		return data;
+	};
+
+	const updateHETriggerOptions = async () => {
+		const data = await WebApi.getHETriggerOptions(setLoading);
+		setHETriggerOptions(data);
 		return data;
 	};
 
 	const updatePeripherals = async () => {
 		const peripherals = await WebApi.getPeripheralOptions(setLoading);
 		setAvailablePeripherals(peripherals);
-		console.log('availablePeripherals updated:', peripherals);
 	};
 
 	useEffect(() => {
 		updateUsedPins();
 		updateExpansionPins();
+		updateHETriggerOptions();
 		updatePeripherals();
 	}, []);
 
@@ -226,9 +231,7 @@ export const AppContextProvider = ({ children, ...props }) => {
 		};
 	}, [usedPins, setUsedPins]);
 
-	console.log('usedPins:', usedPins);
-
-	useEffect(() => {}, [expansionPins, setExpansionPins]);
+	useEffect(() => {}, [expansionPins, setExpansionPins, HETriggerOptions, setHETriggerOptions]);
 
 	const getAvailablePeripherals = (device) => {
 		// gymnastics to make sure the device is defined before trusting config value
@@ -305,6 +308,7 @@ export const AppContextProvider = ({ children, ...props }) => {
 				availablePeripherals,
 				getAvailablePeripherals,
 				expansionPins,
+				HETriggerOptions,
 				getSelectedPeripheral,
 				setButtonLabels,
 				setGradientNormalColor1,
@@ -314,6 +318,8 @@ export const AppContextProvider = ({ children, ...props }) => {
 				setSavedColors,
 				setUsedPins,
 				setExpansionPins,
+				setHETriggerOptions,
+				updateHETriggerOptions,
 				setAvailablePeripherals,
 				updatePeripherals,
 				updateUsedPins,
