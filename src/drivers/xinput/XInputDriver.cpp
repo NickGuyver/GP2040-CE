@@ -108,7 +108,12 @@ static inline bool onlyRemovesDeliveredButtons(uint32_t completed, uint32_t pend
 // Keep continuously changing axes from reserving the next USB poll for almost
 // the entire frame. Digital/trigger changes remain eligible immediately.
 static constexpr uint32_t XINPUT_ANALOG_QUEUE_DELAY_US = 650;
+// Hardware-validated endpoint rearm margins differ between RP2040 and RP2350.
+#if PICO_RP2350
+static constexpr uint32_t XINPUT_REPLACE_DEADLINE_US = 925;
+#else
 static constexpr uint32_t XINPUT_REPLACE_DEADLINE_US = 875;
+#endif
 static constexpr uint32_t XINPUT_MONOTONIC_PRESS_REPLACE_DEADLINE_US = 800;
 static constexpr uint32_t XINPUT_MONOTONIC_RELEASE_REPLACE_DEADLINE_US = 700;
 

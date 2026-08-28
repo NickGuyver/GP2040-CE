@@ -376,6 +376,10 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
   GP2040_BOARDCONFIG="${GP2040_BOARDCONFIG}"
 )
 
+if(PICO_RP2040)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC PICO_FLOAT_IN_RAM=1)
+endif()
+
 target_include_directories(${PROJECT_NAME}  PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required

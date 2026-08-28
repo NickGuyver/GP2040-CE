@@ -53,6 +53,8 @@ void AnalogInput::setup() {
 
     // Setup defaults and helpers
     for (int i = 0; i < ADC_COUNT; i++) {
+        deadzone_span[i] = adc_pairs[i].out_deadzone - adc_pairs[i].in_deadzone;
+        ema_previous_weight[i] = 1.0f - adc_pairs[i].ema_smoothing;
         adc_pairs[i].x_pin_adc = adc_pairs[i].x_pin - ADC_PIN_OFFSET;
         adc_pairs[i].y_pin_adc = adc_pairs[i].y_pin - ADC_PIN_OFFSET;
         adc_pairs[i].x_value = ANALOG_CENTER;
@@ -90,14 +92,10 @@ void AnalogInput::setup() {
 }
 
 void __not_in_flash_func(AnalogInput::process)() {
-    Gamepad * gamepad = Storage::getInstance().GetGamepad();
+    Gamepad * gamepad;
     
     uint32_t joystickMid = GAMEPAD_JOYSTICK_MID;
     uint32_t joystickMax = GAMEPAD_JOYSTICK_MAX;
-    if ( DriverManager::getInstance().getDriver() != nullptr ) {
-        joystickMid = DriverManager::getInstance().getDriver()->GetJoystickMidValue();
-        joystickMax = joystickMid * 2; // 0x8000 mid must be 0x10000 max, but we reduce by 1 if we're maxed out
-    }
 
     struct AxisSample {
         uint8_t stick;
@@ -129,8 +127,8 @@ void __not_in_flash_func(AnalogInput::process)() {
         }
 
         // If MID is 0x8000, clamp our max to 0xFFFF incase we are at 0x10000. 0x7FFF will max at 0xFFFE
-        uint16_t clampedX = (uint16_t)std::min((uint32_t)(joystickMax * std::min(adc_pairs[i].x_value, 1.0f)), (uint32_t)0xFFFF);
-        uint16_t clampedY = (uint16_t)std::min((uint32_t)(joystickMax * std::min(adc_pairs[i].y_value, 1.0f)), (uint32_t)0xFFFF);
+        uint16_t clampedX = (uint16_t)std::min((uint32_t)(joystickMax * adc_pairs[i].x_value), (uint32_t)0xFFFF);
+        uint16_t clampedY = (uint16_t)std::min((uint32_t)(joystickMax * adc_pairs[i].y_value), (uint32_t)0xFFFF);
 
         if (adc_pairs[i].analog_dpad == DpadMode::DPAD_MODE_LEFT_ANALOG) {
             gamepad->state.lx = clampedX;
@@ -144,6 +142,12 @@ void __not_in_flash_func(AnalogInput::process)() {
     if (sampleCount != 0) {
         adc_select_input(samples[0].input);
         hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS);
+    }
+
+    gamepad = Storage::getInstance().GetGamepad();
+    if (DriverManager::getInstance().getDriver() != nullptr) {
+        joystickMid = DriverManager::getInstance().getDriver()->GetJoystickMidValue();
+        joystickMax = joystickMid * 2; // 0x8000 mid must be 0x10000 max, but we reduce by 1 if we're maxed out
     }
 
     for (uint sample = 0; sample < sampleCount; sample++) {
@@ -201,7 +205,7 @@ float __not_in_flash_func(AnalogInput::normalizePin)(int stick_num, uint16_t adc
 }
 
 float AnalogInput::emaCalculation(int stick_num, float ema_value, float ema_previous) {
-    return (adc_pairs[stick_num].ema_smoothing * ema_value) + ((1.0f - adc_pairs[stick_num].ema_smoothing) * ema_previous);
+    return (adc_pairs[stick_num].ema_smoothing * ema_value) + (ema_previous_weight[stick_num] * ema_previous);
 }
 
 uint16_t AnalogInput::map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
@@ -215,9 +219,9 @@ float AnalogInput::magnitudeCalculation(int stick_num, adc_instance & adc_inst) 
 }
 
 void __not_in_flash_func(AnalogInput::radialDeadzone)(int stick_num, adc_instance & adc_inst) {
-    float scaling_factor = (adc_inst.xy_magnitude - adc_pairs[stick_num].in_deadzone) / (adc_pairs[stick_num].out_deadzone - adc_pairs[stick_num].in_deadzone);
+    float scaling_factor = (adc_inst.xy_magnitude - adc_pairs[stick_num].in_deadzone) / deadzone_span[stick_num];
     if (adc_pairs[stick_num].forced_circularity == true) {
-        scaling_factor = std::fmin(scaling_factor, ANALOG_CENTER);
+        scaling_factor = (scaling_factor <= ANALOG_CENTER) ? scaling_factor : ANALOG_CENTER;
     }
     adc_inst.x_value = ((adc_inst.x_magnitude / adc_inst.xy_magnitude) * scaling_factor) + ANALOG_CENTER;
     adc_inst.y_value = ((adc_inst.y_magnitude / adc_inst.xy_magnitude) * scaling_factor) + ANALOG_CENTER;

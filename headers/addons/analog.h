@@ -148,6 +148,8 @@ private:
     float magnitudeCalculation(int stick_num, adc_instance & adc_inst);
     void radialDeadzone(int stick_num, adc_instance & adc_inst);
     adc_instance adc_pairs[ADC_COUNT];
+    float deadzone_span[ADC_COUNT];
+    float ema_previous_weight[ADC_COUNT];
 };
 
 #endif  // _Analog_H_
