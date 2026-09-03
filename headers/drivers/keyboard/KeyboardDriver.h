@@ -33,9 +33,9 @@ private:
     uint8_t getModifier(uint8_t code);
     uint8_t getMultimedia(uint8_t code);
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    uint16_t last_report_size;
-    KeyboardReport keyboardReport;
-    int8_t volumeChange;
+    uint16_t last_report_size = 0;
+    KeyboardReport keyboardReport{};
+    int8_t volumeChange = 0;
 };
 
 #endif // _KEYBOARD_DRIVER_H_

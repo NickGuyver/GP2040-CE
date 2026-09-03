@@ -37,18 +37,18 @@ public:
     bool getAuthSent() { return false;}
     bool getDongleAuthRequired();
 private:
-    P5GenerorReport p5GeneralReport;
-    P5GenerorReport p5GeneralReport_last;
-    TouchpadData touchpadData;
+    P5GenerorReport p5GeneralReport{};
+    P5GenerorReport p5GeneralReport_last{};
+    TouchpadData touchpadData{};
     //PSSensor gyroscope;
     //PSSensor accelerometer;
-    uint64_t last_report_us;
-    P5GeneralAuth * p5GeneralAuthDriver;
-    P5GeneralAuthData * p5GeneralAuthData;
+    uint64_t last_report_us = 0;
+    P5GeneralAuth * p5GeneralAuthDriver = nullptr;
+    P5GeneralAuthData * p5GeneralAuthData = nullptr;
     bool pointOneTouched = false;
     bool pointTwoTouched = false;
-    uint8_t diff_report_repeat;
-    uint8_t touchCounter;
+    uint8_t diff_report_repeat = 0;
+    uint8_t touchCounter = 0;
 };
 
 #endif // _P5GENERAL_DRIVER_H_

@@ -43,7 +43,7 @@ public:
 private:
     OnBoardLedMode onBoardLedMode;
     bool isConfigMode;
-    bool prevState;
+    int8_t prevState;
     uint32_t timeSinceBlink;
 };
 

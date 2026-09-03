@@ -19,7 +19,7 @@ public:
     virtual USBListener * getListener() { return listener; }
     InputModeAuthType getAuthType() { return authType; }
 protected:
-    USBListener * listener;
+    USBListener * listener = nullptr;
     InputModeAuthType authType;
 };
 

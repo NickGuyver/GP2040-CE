@@ -2,7 +2,7 @@
 #include "GamepadState.h"
 #include "storagemanager.h"
 
-CustomThemePressed::CustomThemePressed(PixelMatrix &matrix) : Animation(matrix) {
+CustomThemePressed::CustomThemePressed(PixelMatrix &matrix) : Animation(matrix), pixels(nullptr) {
   this->filtered = true;
 
   AnimationOptions & animationOptions = Storage::getInstance().getAnimationOptions();

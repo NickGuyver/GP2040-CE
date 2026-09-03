@@ -38,9 +38,9 @@ public:
     virtual void reinit() {}
     virtual std::string name() { return SNESpadName; }
 private:
-    SNESpad * snes;
-    uint32_t uIntervalMS;
-    uint32_t nextTimer;
+    SNESpad * snes = nullptr;
+    uint32_t uIntervalMS{};
+    uint32_t nextTimer{};
 
     bool buttonA = false;
     bool buttonB = false;

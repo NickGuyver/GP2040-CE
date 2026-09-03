@@ -15,17 +15,17 @@ typedef enum {
 } P5GeneralGPAuthState;
 
 typedef struct {
-    uint8_t hash_pending_buffer[64];
-    uint8_t hash_finish_buffer[64];
+    uint8_t hash_pending_buffer[64]{};
+    uint8_t hash_finish_buffer[64]{};
 
-    uint8_t auth_buffer[64];
+    uint8_t auth_buffer[64]{};
 
-    uint64_t auth_recv_f2_us;
+    uint64_t auth_recv_f2_us{};
 
     bool dongle_ready = false;
     bool hash_pending = false;
     bool hash_ready = false;
-    P5GeneralGPAuthState passthrough_state;
+    P5GeneralGPAuthState passthrough_state{p5g_auth_idle};
 } P5GeneralAuthData;
 
 class P5GeneralAuth : public GPAuthDriver {
@@ -35,7 +35,7 @@ public:
     void process();
     P5GeneralAuthData * getAuthData() { return &p5GeneralAuthData; }
 private:
-    P5GeneralAuthData p5GeneralAuthData;
+    P5GeneralAuthData p5GeneralAuthData{};
 };
 
 #endif

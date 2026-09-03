@@ -18,8 +18,8 @@
 typedef struct
 {
 	uint8_t reportId = KEYBOARD_KEY_REPORT_ID;
-	uint8_t keycode[32]; /**< Key codes of the currently pressed keys. */
-	uint8_t multimedia;
+	uint8_t keycode[32]{}; /**< Key codes of the currently pressed keys. */
+	uint8_t multimedia = 0;
 } KeyboardReport;
 
 static const uint8_t keyboard_string_language[]    = { 0x09, 0x04 };

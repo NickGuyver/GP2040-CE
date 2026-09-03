@@ -27,7 +27,7 @@ public:
     virtual USBListener * get_usb_auth_listener() { return nullptr; }
 private:
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    AstroReport astroReport;
+    AstroReport astroReport{};
 };
 
 #endif // _ASTRO_DRIVER_H_

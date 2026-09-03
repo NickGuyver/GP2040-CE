@@ -4,7 +4,7 @@
 
 #include <cstring>
 
-GPGFX_UI::GPGFX_UI() {
+GPGFX_UI::GPGFX_UI() : _renderer(nullptr) {
 }
 
 Gamepad* GPGFX_UI::getGamepad() { 

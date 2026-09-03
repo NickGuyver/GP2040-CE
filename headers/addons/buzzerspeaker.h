@@ -142,14 +142,14 @@ private:
     void playIntro();
     void stop();
     uint32_t pwmSetFreqDuty(uint slice, uint channel, uint32_t frequency, float duty);
-    uint8_t buzzerPin;
-    uint8_t buzzerEnablePin;
-    uint8_t buzzerPinSlice;
-    uint8_t buzzerPinChannel;
-    uint8_t buzzerVolume;
-    uint32_t startedSongMils;
-    Song *currentSong;
-    bool introPlayed;
+    uint8_t buzzerPin{};
+    uint8_t buzzerEnablePin{};
+    uint8_t buzzerPinSlice{};
+    uint8_t buzzerPinChannel{};
+    uint8_t buzzerVolume{};
+    uint32_t startedSongMils{};
+    Song *currentSong = nullptr;
+    bool introPlayed = false;
     bool isSpeakerOn = false;
 };
 

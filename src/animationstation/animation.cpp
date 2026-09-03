@@ -57,7 +57,7 @@ void Animation::ClearPixels() {
 
 /* Some of these animations are filtered to specific pixels, such as button press animations.
 This somewhat backwards named method determines if a specific pixel is _not_ included in the filter */
-bool Animation::notInFilter(Pixel pixel) {
+bool Animation::notInFilter(const Pixel& pixel) {
   if (!this->filtered) {
     return false;
   }

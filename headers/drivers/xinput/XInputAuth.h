@@ -43,12 +43,12 @@ public:
 //     Dongle Serial 29 bytes
 //     Console-Dongle Back and Forth 46 bytes & 22 bytes
 typedef struct {
-    GPAuthState xinputState;
-    uint8_t consoleInitialAuth[X360_AUTHLEN_CONSOLE_INIT]; // Console Init (Keep when Dongle Reboots)
-    uint8_t dongleSerial[X360_AUTHLEN_DONGLE_SERIAL];       // Dongle Serial
-    uint8_t passthruBuffer[X360_AUTHLEN_DONGLE_INIT];     // Back-and-Forth Buffer (46 or 22 bytes)
-    uint8_t passthruBufferLen;      // Length of Passthru (do we need this?)
-    uint8_t passthruBufferID;       // ID of vendor request
+    GPAuthState xinputState{auth_idle_state};
+    uint8_t consoleInitialAuth[X360_AUTHLEN_CONSOLE_INIT]{}; // Console Init (Keep when Dongle Reboots)
+    uint8_t dongleSerial[X360_AUTHLEN_DONGLE_SERIAL]{};       // Dongle Serial
+    uint8_t passthruBuffer[X360_AUTHLEN_DONGLE_INIT]{};     // Back-and-Forth Buffer (46 or 22 bytes)
+    uint8_t passthruBufferLen{};      // Length of Passthru (do we need this?)
+    uint8_t passthruBufferID{};       // ID of vendor request
     bool authCompleted = false;
     bool hasInitAuth = false;
     bool dongle_ready = false;
@@ -62,7 +62,7 @@ public:
     void process();
     XInputAuthData * getAuthData() { return &xinputAuthData; }
 private:
-    XInputAuthData xinputAuthData;
+    XInputAuthData xinputAuthData{};
 };
 
 #endif

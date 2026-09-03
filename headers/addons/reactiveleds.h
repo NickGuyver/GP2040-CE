@@ -46,8 +46,8 @@ class ReactiveLEDAddon : public GPAddon
             uint8_t value = 0;
             bool currState = false;
             bool prevState = false;
-            uint32_t lastUpdate;
-            uint32_t currUpdate;
+            uint32_t lastUpdate = 0;
+            uint32_t currUpdate = 0;
         };
 
         ReactiveLEDPinState ledPins[REACTIVE_LED_COUNT];

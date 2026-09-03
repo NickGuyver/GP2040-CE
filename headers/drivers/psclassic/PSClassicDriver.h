@@ -27,7 +27,7 @@ public:
     virtual USBListener * get_usb_auth_listener() { return nullptr; }
 private:
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    PSClassicReport psClassicReport;
+    PSClassicReport psClassicReport{};
 };
 
 #endif // _PSCLASSIC_DRIVER_H_

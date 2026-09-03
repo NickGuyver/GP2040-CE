@@ -31,8 +31,8 @@ private:
     AddonManager addons;
     // GPIO debouncer
     void debounceGpioGetAll();
-    Mask_t buttonGpios;
-    uint32_t gpioDebounceTime[NUM_BANK0_GPIOS];
+    Mask_t buttonGpios{};
+    uint32_t gpioDebounceTime[NUM_BANK0_GPIOS]{};
 
     struct RebootHotkeys {
         RebootHotkeys();

@@ -32,9 +32,9 @@ public:
 private:
     uint8_t report[SWITCH_PRO_ENDPOINT_SIZE] = { };
     uint8_t last_report[SWITCH_PRO_ENDPOINT_SIZE] = { };
-    SwitchProReport switchReport;
-    uint8_t last_report_counter;
-    uint32_t last_report_timer;
+    SwitchProReport switchReport{};
+    uint8_t last_report_counter = 0;
+    uint32_t last_report_timer = 0;
     bool isReady = false;
     bool isInitialized = false;
     bool isReportQueued = false;
@@ -48,7 +48,7 @@ private:
         {0x8000, userCalibrationData}
     };
 
-    SwitchDeviceInfo deviceInfo;
+    SwitchDeviceInfo deviceInfo{};
     uint8_t playerID = 0;
     uint8_t inputMode = 0x30;
     bool isIMUEnabled = false;
@@ -74,12 +74,12 @@ private:
     uint16_t scale16To12(uint16_t pos) { return pos >> 4; }
     uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) { return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min; }
 
-    uint16_t leftMinX, leftMinY;
-    uint16_t leftCenX, leftCenY;
-    uint16_t leftMaxX, leftMaxY;
-    uint16_t rightMinX, rightMinY;
-    uint16_t rightCenX, rightCenY;
-    uint16_t rightMaxX, rightMaxY;
+    uint16_t leftMinX = 0, leftMinY = 0;
+    uint16_t leftCenX = 0, leftCenY = 0;
+    uint16_t leftMaxX = 0, leftMaxY = 0;
+    uint16_t rightMinX = 0, rightMinY = 0;
+    uint16_t rightCenX = 0, rightCenY = 0;
+    uint16_t rightMaxX = 0, rightMaxY = 0;
 
     // config data
     SwitchFactoryConfig* factoryConfig = (SwitchFactoryConfig*)factoryConfigData;

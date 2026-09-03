@@ -33,42 +33,42 @@ public:
     bool getAuthSent();
 private:
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    XInputReport xinputReport;
-    XInputAuth * xAuthDriver;
-    uint8_t featureBuffer[XINPUT_OUT_SIZE];
-    uint8_t tud_buffer[64];
-    bool xAuthSent;
+    XInputReport xinputReport{};
+    XInputAuth * xAuthDriver = nullptr;
+    uint8_t featureBuffer[XINPUT_OUT_SIZE]{};
+    uint8_t tud_buffer[64]{};
+    bool xAuthSent = false;
 
-    InputModeDeviceType deviceType;
-    uint8_t configDescriptor[sizeof(xinput_configuration_descriptor)];
+    InputModeDeviceType deviceType{};
+    uint8_t configDescriptor[sizeof(xinput_configuration_descriptor)]{};
 
-    GamepadButtonMapping *buttonGas;
-    GamepadButtonMapping *buttonBrake;
-    GamepadButtonMapping *buttonSteerLeft;
-    GamepadButtonMapping *buttonSteerRight;
+    GamepadButtonMapping *buttonGas = nullptr;
+    GamepadButtonMapping *buttonBrake = nullptr;
+    GamepadButtonMapping *buttonSteerLeft = nullptr;
+    GamepadButtonMapping *buttonSteerRight = nullptr;
 
-    GamepadButtonMapping *buttonFretGreen;
-    GamepadButtonMapping *buttonFretRed;
-    GamepadButtonMapping *buttonFretYellow;
-    GamepadButtonMapping *buttonFretBlue;
-    GamepadButtonMapping *buttonFretOrange;
-    GamepadButtonMapping *buttonFretSoloGreen;
-    GamepadButtonMapping *buttonFretSoloRed;
-    GamepadButtonMapping *buttonFretSoloYellow;
-    GamepadButtonMapping *buttonFretSoloBlue;
-    GamepadButtonMapping *buttonFretSoloOrange;
-    GamepadButtonMapping *buttonWhammy;
-    GamepadButtonMapping *buttonTilt;
+    GamepadButtonMapping *buttonFretGreen = nullptr;
+    GamepadButtonMapping *buttonFretRed = nullptr;
+    GamepadButtonMapping *buttonFretYellow = nullptr;
+    GamepadButtonMapping *buttonFretBlue = nullptr;
+    GamepadButtonMapping *buttonFretOrange = nullptr;
+    GamepadButtonMapping *buttonFretSoloGreen = nullptr;
+    GamepadButtonMapping *buttonFretSoloRed = nullptr;
+    GamepadButtonMapping *buttonFretSoloYellow = nullptr;
+    GamepadButtonMapping *buttonFretSoloBlue = nullptr;
+    GamepadButtonMapping *buttonFretSoloOrange = nullptr;
+    GamepadButtonMapping *buttonWhammy = nullptr;
+    GamepadButtonMapping *buttonTilt = nullptr;
 
-    GamepadButtonMapping *buttonDrumPadRed;
-    GamepadButtonMapping *buttonDrumPadBlue;
-    GamepadButtonMapping *buttonDrumPadYellow;
-    GamepadButtonMapping *buttonDrumPadGreen;
-    GamepadButtonMapping *buttonCymbalYellow;
-    GamepadButtonMapping *buttonCymbalBlue;
-    GamepadButtonMapping *buttonCymbalGreen;
-    GamepadButtonMapping *buttonKickPedalLeft;
-    GamepadButtonMapping *buttonKickPedalRight;
+    GamepadButtonMapping *buttonDrumPadRed = nullptr;
+    GamepadButtonMapping *buttonDrumPadBlue = nullptr;
+    GamepadButtonMapping *buttonDrumPadYellow = nullptr;
+    GamepadButtonMapping *buttonDrumPadGreen = nullptr;
+    GamepadButtonMapping *buttonCymbalYellow = nullptr;
+    GamepadButtonMapping *buttonCymbalBlue = nullptr;
+    GamepadButtonMapping *buttonCymbalGreen = nullptr;
+    GamepadButtonMapping *buttonKickPedalLeft = nullptr;
+    GamepadButtonMapping *buttonKickPedalRight = nullptr;
 };
 
 #endif

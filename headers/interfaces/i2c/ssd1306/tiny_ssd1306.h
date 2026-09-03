@@ -7,7 +7,7 @@
 
 class GPGFX_TinySSD1306 : public GPGFX_DisplayBase {
     public:
-        GPGFX_TinySSD1306() {}
+        GPGFX_TinySSD1306() : _options{}, frameBuffer{}, screenType{} {}
         ~GPGFX_TinySSD1306() {}
 
         void init(GPGFX_DisplayTypeOptions options);

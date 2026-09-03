@@ -8,7 +8,7 @@
 
 struct Pixel {
   Pixel(int index, uint32_t mask = 0) : index(index), mask(mask) { }
-  Pixel(int index, std::vector<uint8_t> positions) : index(index), positions(positions) { }
+  Pixel(int index, std::vector<uint8_t> positions) : index(index), mask(0), positions(positions) { }
   Pixel(int index, uint32_t mask, std::vector<uint8_t> positions) : index(index), mask(mask), positions(positions) { }
 
   int index;                      // The pixel index
@@ -19,7 +19,7 @@ struct Pixel {
 inline const Pixel NO_PIXEL(-1);
 
 struct PixelMatrix {
-  PixelMatrix() { }
+  PixelMatrix() : ledsPerPixel(0) { }
 
   std::vector<std::vector<Pixel>> pixels;
   uint8_t ledsPerPixel;

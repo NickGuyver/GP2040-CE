@@ -10,7 +10,7 @@
 
 #include "storagemanager.h"
 
-AnimationStation::AnimationStation() {
+AnimationStation::AnimationStation() : baseAnimation(nullptr), buttonAnimation(nullptr) {
     brightnessMax = 100;
     brightnessSteps = 5;
     brightnessX = 0;

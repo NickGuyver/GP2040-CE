@@ -148,7 +148,7 @@ public:
 
     std::map<uint8_t, GpioMappingInfo> pinRef;
 private:
-    PCF8575* pcf;
+    PCF8575* pcf = nullptr;
 
     bool inputButtonUp = false;
     bool inputButtonDown = false;

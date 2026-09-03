@@ -43,7 +43,7 @@ public:
 };
 
 typedef struct {
-    GPAuthState xboneState;
+    GPAuthState xboneState{auth_idle_state};
 
     // Auth Buffer Queue
     XBOneAuthBuffer consoleBuffer;
@@ -64,7 +64,7 @@ public:
     void process();
     XboxOneAuthData * getAuthData() { return &xboxOneAuthData; }
 private:
-    XboxOneAuthData xboxOneAuthData;
+    XboxOneAuthData xboxOneAuthData{};
 };
 
 #endif

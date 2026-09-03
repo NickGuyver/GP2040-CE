@@ -34,14 +34,14 @@ private:
     bool send_xbone_usb(uint8_t const *buffer, uint16_t bufsize);
     void set_ack_wait();
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    uint8_t last_report_counter;
-    XboxOneGamepad_Data_t xboneReport;
-    uint32_t keep_alive_timer;
-    uint8_t keep_alive_sequence;
-    uint8_t virtual_keycode_sequence;
-    bool xb1_guide_pressed;
-    GPAuthDriver * authDriver;
-    uint8_t xbone_led_mode;
+    uint8_t last_report_counter = 0;
+    XboxOneGamepad_Data_t xboneReport{};
+    uint32_t keep_alive_timer = 0;
+    uint8_t keep_alive_sequence = 0;
+    uint8_t virtual_keycode_sequence = 0;
+    bool xb1_guide_pressed = false;
+    GPAuthDriver * authDriver = nullptr;
+    uint8_t xbone_led_mode = 0;
 };
 
 #endif // _XBONE_DRIVER_H_

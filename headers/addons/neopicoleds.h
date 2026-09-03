@@ -243,35 +243,35 @@ private:
     void ambientHotkeys(Gamepad *gamepad);
     void ambientLightCustom();
     const uint32_t intervalMS = 10;
-    absolute_time_t nextRunTime;
-    int ledCount;
-    int buttonLedCount;
+    absolute_time_t nextRunTime{};
+    int ledCount{};
+    int buttonLedCount{};
     PixelMatrix matrix;
     NeoPico neopico;
     PLEDAnimationState animationState; // NeoPico can control the player LEDs
     NeoPicoPlayerLEDs * neoPLEDs = nullptr;
     AnimationStation as;
     std::map<std::string, int> buttonPositions;
-    PLEDType ledType;
-    GamepadHotkey lastAmbientAction;
-    uint32_t frame[100];
+    PLEDType ledType{PLED_TYPE_NONE};
+    GamepadHotkey lastAmbientAction{};
+    uint32_t frame[100]{};
 
     // Ambient neopico leds
-	float alBrightnessBreathX;
-	uint8_t breathLedEffectCycle;
-	bool alReverse;
-	int alCurrentFrame;
-	int alFrameToRGB;
-	int alFrameSpeed;
-    RGB ambientLight;
-	absolute_time_t nextRunTimeAmbientLight;
-    uint8_t chaseLightIndex;
-    uint8_t chaseLightMaxIndexPos;
+	float alBrightnessBreathX{};
+	uint8_t breathLedEffectCycle{};
+	bool alReverse{};
+	int alCurrentFrame{};
+	int alFrameToRGB{};
+	int alFrameSpeed{};
+    RGB ambientLight{0, 0, 0, 0};
+	absolute_time_t nextRunTimeAmbientLight{};
+    uint8_t chaseLightIndex{};
+    uint8_t chaseLightMaxIndexPos{};
 
-    uint8_t multipleOfButtonLedsCount;
-    uint8_t remainderOfButtonLedsCount;
+    uint8_t multipleOfButtonLedsCount{};
+    uint8_t remainderOfButtonLedsCount{};
 
-    uint8_t alLinkageStartIndex;
+    uint8_t alLinkageStartIndex{};
 };
 
 #endif

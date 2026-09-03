@@ -45,10 +45,10 @@ private:
     uint8_t convert24to8bit(float voltage);
     uint16_t convert24to16bit(float voltage);
 
-    ADS1256 * ads;
-    float values[ADS1256_CHANNEL_COUNT]; // Cache for latest read values
-    bool enableTriggers;
-    uint8_t readChannelCount; // Number of channels to read from the ADC
+    ADS1256 * ads = nullptr;
+    float values[ADS1256_CHANNEL_COUNT]{}; // Cache for latest read values
+    bool enableTriggers{};
+    uint8_t readChannelCount{}; // Number of channels to read from the ADC
     float analogMax = ADS1256_MAX_3V * 10.0f;
 };
 

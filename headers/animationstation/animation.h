@@ -23,7 +23,7 @@ struct RGB {
     : r(r), g(g), b(b), w(w) { }
 
   RGB(uint32_t c)
-    : r((c >> 16) & 255), g((c >> 8) & 255), b((c >> 0) & 255) { }
+    : r((c >> 16) & 255), g((c >> 8) & 255), b((c >> 0) & 255), w(0) { }
 
   uint8_t r;
   uint8_t g;
@@ -117,7 +117,7 @@ public:
 
   static LEDFormat format;
 
-  bool notInFilter(Pixel pixel);
+  bool notInFilter(const Pixel& pixel);
   virtual bool Animate(RGB (&frame)[100]) = 0;
   void UpdateTime();
   void UpdatePresses(RGB (&frame)[100]);

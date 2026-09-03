@@ -116,8 +116,8 @@ public:
     } EncoderPinState;
 private:
     EncoderPinState encoderState[MAX_ENCODERS];
-    int32_t encoderValues[MAX_ENCODERS];
-    int32_t prevValues[MAX_ENCODERS];
+    int32_t encoderValues[MAX_ENCODERS]{};
+    int32_t prevValues[MAX_ENCODERS]{};
     EncoderPinMap encoderMap[MAX_ENCODERS] = {
         {false, -1, -1, 24, ENCODER_MODE_NONE, -1, -1},
         {false, -1, -1, 24, ENCODER_MODE_NONE, -1, -1},

@@ -88,9 +88,9 @@ public:
     virtual void reinit() {}
     virtual std::string name() { return WiiExtensionName; }
 private:
-    WiiExtensionDevice * wii;
-    uint32_t uIntervalMS;
-    uint32_t nextTimer;
+    WiiExtensionDevice * wii = nullptr;
+    uint32_t uIntervalMS{};
+    uint32_t nextTimer{};
 
     // controller ID = config
     // defaults if no defined config

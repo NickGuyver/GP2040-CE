@@ -27,47 +27,47 @@ public:
     virtual USBListener * get_usb_auth_listener() { return nullptr; }
 private:
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    PS3Report ps3Report;
-    PS3ReportAlt ps3ReportAlt;
-    PS3Features ps3Features;
+    PS3Report ps3Report{};
+    PS3ReportAlt ps3ReportAlt{};
+    PS3Features ps3Features{};
     uint8_t lastFeatures[PS3_FEATURES_SIZE] = { };
-    PS3BTInfo ps3BTInfo;
+    PS3BTInfo ps3BTInfo{};
 
     // this is an identification byte from the H2D 0xEF feature report that needs to be the same 
     // in multiple D2H reports for the controller to function
-    uint8_t efByte;
+    uint8_t efByte = 0;
 
-    InputModeDeviceType deviceType;
-    uint8_t deviceDescriptor[sizeof(ps3_device_descriptor)];
+    InputModeDeviceType deviceType{};
+    uint8_t deviceDescriptor[sizeof(ps3_device_descriptor)]{};
 
-    GamepadButtonMapping *buttonFretGreen;
-    GamepadButtonMapping *buttonFretRed;
-    GamepadButtonMapping *buttonFretYellow;
-    GamepadButtonMapping *buttonFretBlue;
-    GamepadButtonMapping *buttonFretOrange;
-    GamepadButtonMapping *buttonWhammy;
-    GamepadButtonMapping *buttonPickup;
-    GamepadButtonMapping *buttonTilt;
+    GamepadButtonMapping *buttonFretGreen = nullptr;
+    GamepadButtonMapping *buttonFretRed = nullptr;
+    GamepadButtonMapping *buttonFretYellow = nullptr;
+    GamepadButtonMapping *buttonFretBlue = nullptr;
+    GamepadButtonMapping *buttonFretOrange = nullptr;
+    GamepadButtonMapping *buttonWhammy = nullptr;
+    GamepadButtonMapping *buttonPickup = nullptr;
+    GamepadButtonMapping *buttonTilt = nullptr;
 
-    GamepadButtonMapping *buttonDrumPadRed;
-    GamepadButtonMapping *buttonDrumPadBlue;
-    GamepadButtonMapping *buttonDrumPadYellow;
-    GamepadButtonMapping *buttonDrumPadGreen;
-    GamepadButtonMapping *buttonCymbalYellow;
-    GamepadButtonMapping *buttonCymbalBlue;
-    GamepadButtonMapping *buttonCymbalGreen;
+    GamepadButtonMapping *buttonDrumPadRed = nullptr;
+    GamepadButtonMapping *buttonDrumPadBlue = nullptr;
+    GamepadButtonMapping *buttonDrumPadYellow = nullptr;
+    GamepadButtonMapping *buttonDrumPadGreen = nullptr;
+    GamepadButtonMapping *buttonCymbalYellow = nullptr;
+    GamepadButtonMapping *buttonCymbalBlue = nullptr;
+    GamepadButtonMapping *buttonCymbalGreen = nullptr;
 
-    GamepadButtonMapping *buttonShiftUp;
-    GamepadButtonMapping *buttonShiftDown;
-    GamepadButtonMapping *buttonGas;
-    GamepadButtonMapping *buttonBrake;
-    GamepadButtonMapping *buttonSteerLeft;
-    GamepadButtonMapping *buttonSteerRight;
-    GamepadButtonMapping *buttonPlus;
-    GamepadButtonMapping *buttonMinus;
-    GamepadButtonMapping *buttonDialDown;
-    GamepadButtonMapping *buttonDialUp;
-    GamepadButtonMapping *buttonDialEnter;
+    GamepadButtonMapping *buttonShiftUp = nullptr;
+    GamepadButtonMapping *buttonShiftDown = nullptr;
+    GamepadButtonMapping *buttonGas = nullptr;
+    GamepadButtonMapping *buttonBrake = nullptr;
+    GamepadButtonMapping *buttonSteerLeft = nullptr;
+    GamepadButtonMapping *buttonSteerRight = nullptr;
+    GamepadButtonMapping *buttonPlus = nullptr;
+    GamepadButtonMapping *buttonMinus = nullptr;
+    GamepadButtonMapping *buttonDialDown = nullptr;
+    GamepadButtonMapping *buttonDialUp = nullptr;
+    GamepadButtonMapping *buttonDialEnter = nullptr;
 };
 
 #endif // _PS3_DRIVER_H_

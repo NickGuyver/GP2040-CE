@@ -52,7 +52,7 @@ protected:
     PLEDAnimationState animationState;
 
 private:
-    bool turnOffWhenSuspended;
+    bool turnOffWhenSuspended = false;
 };
 
 #endif

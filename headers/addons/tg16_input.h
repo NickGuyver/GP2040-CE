@@ -46,8 +46,8 @@ public:
     virtual void reinit() {}
     virtual std::string name() { return TG16padName; }
 private:
-    uint32_t uIntervalMS;
-    uint32_t nextTimer;
+    uint32_t uIntervalMS{};
+    uint32_t nextTimer{};
 
     bool buttonI = false;
     bool buttonII = false;
@@ -68,4 +68,4 @@ private:
     void updateButtons(uint16_t data);
 };
 
-#endif  // _TG16padAddon_H 
+#endif  // _TG16padAddon_H

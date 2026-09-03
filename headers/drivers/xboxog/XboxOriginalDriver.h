@@ -27,8 +27,8 @@ public:
     virtual USBListener * get_usb_auth_listener() { return nullptr; }
 private:
     uint8_t last_report[CFG_TUD_ENDPOINT0_SIZE] = { };
-    XboxOriginalReport xboxOriginalReport;
-    XboxOriginalReportOut xboxOriginalReportOut;
+    XboxOriginalReport xboxOriginalReport{};
+    XboxOriginalReportOut xboxOriginalReportOut{};
 };
 
 #endif // _XBOX_ORIGINAL_DRIVER_H_
