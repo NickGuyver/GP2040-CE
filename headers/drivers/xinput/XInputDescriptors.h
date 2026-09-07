@@ -9,6 +9,8 @@
 #include <pico/unique_id.h>
 
 #define XINPUT_ENDPOINT_SIZE 20
+#define XINPUT_REPORT_ENDPOINT_IN 0x81
+#define XINPUT_REPORT_POLL_INTERVAL_MS 1
 
 // Buttons 1 (8 bits)
 // TODO: Consider using an enum class here.
@@ -143,7 +145,7 @@ static const uint8_t xinput_configuration_descriptor[] =
     0x00, 0x01,  // bcdHID 1.10
     0x01,        // SUB_TYPE
     0x25,        // reserved2
-    0x81,        // DEVICE_EPADDR_IN
+    XINPUT_REPORT_ENDPOINT_IN,
     0x14,        // bMaxDataSizeIn
     0x00, 0x00, 0x00, 0x00, 0x13, // reserved3
     0x02,        // DEVICE_EPADDR_OUT is this right?
@@ -153,10 +155,10 @@ static const uint8_t xinput_configuration_descriptor[] =
     // Report IN Endpoint 1.1
     0x07,        // bLength
     0x05,        // bDescriptorType (Endpoint)
-    0x81,        // bEndpointAddress (IN/D2H)
+    XINPUT_REPORT_ENDPOINT_IN,
     0x03,        // bmAttributes (Interrupt)
     0x20, 0x00,  // wMaxPacketSize 32
-    0x01,        // bInterval 1 (unit depends on device speed)
+    XINPUT_REPORT_POLL_INTERVAL_MS,
 
     // Report OUT Endpoint 1.2
     0x07,        // bLength

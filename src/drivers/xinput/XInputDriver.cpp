@@ -5,15 +5,9 @@
 
 #include "drivers/xinput/XInputDriver.h"
 #include "drivers/shared/driverhelper.h"
+#include "drivers/shared/USBReportScheduler.h"
 #include "storagemanager.h"
-#include "pico/time.h"
 #include "pico/platform.h"
-
-#include <cstddef>
-
-#include "hardware/structs/usb.h"
-#include "hardware/structs/usb_dpram.h"
-#include "hardware/sync.h"
 
 #define USB_SETUP_DEVICE_TO_HOST 0x80
 #define USB_SETUP_HOST_TO_DEVICE 0x00
@@ -38,84 +32,94 @@ static uint8_t endpoint_in = 0;
 static uint8_t endpoint_out = 0;
 static uint8_t xinput_out_buffer[XINPUT_OUT_SIZE] = {};
 static XInputAuthData * xinputAuthData = nullptr;
-static uint32_t xinput_last_in_complete_us = 0;
-static uint32_t xinput_completed_priority = 0;
-static bool xinput_pending_axis_only = false;
+// Full-speed bInterval units are milliseconds. This conversion is USB
+// protocol data, not a tuned scheduler margin.
+static constexpr uint32_t MICROSECONDS_PER_MILLISECOND = 1000;
+static constexpr uint32_t XINPUT_POLL_INTERVAL_US =
+    XINPUT_REPORT_POLL_INTERVAL_MS * MICROSECONDS_PER_MILLISECOND;
 
-__attribute__((noinline)) static bool replacePendingInBuffer(uint8_t ep_addr, uint8_t const *buffer, uint16_t total_bytes) {
-    uint8_t const ep_num = ep_addr & 0x0f;
-    if (rp2040_chip_version() < 2 || !(ep_addr & 0x80) || ep_num == 0 ||
-        ep_num >= USB_NUM_ENDPOINTS || total_bytes > USB_MAX_PACKET_SIZE) {
-        return false;
+static bool isDigitalAxisAction(GpioAction action) {
+    switch (action) {
+        case ANALOG_DIRECTION_LS_X_NEG:
+        case ANALOG_DIRECTION_LS_X_POS:
+        case ANALOG_DIRECTION_LS_Y_NEG:
+        case ANALOG_DIRECTION_LS_Y_POS:
+        case ANALOG_DIRECTION_RS_X_NEG:
+        case ANALOG_DIRECTION_RS_X_POS:
+        case ANALOG_DIRECTION_RS_Y_NEG:
+        case ANALOG_DIRECTION_RS_Y_POS:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void XInputDriver::updateAnalogScheduling(uint32_t appliedProfileNumber) {
+    Storage &storage = Storage::getInstance();
+    analogSchedulingProfile = appliedProfileNumber;
+    analogSchedulingAllowed = false;
+
+    // Axis reports do not retain whether a value came from a stick or a
+    // button. Keep ordinary FIFO submission when digital axis mappings could
+    // otherwise be deferred or overwritten as disposable analog movement.
+    // These driver mappings are initialized once, not on profile changes.
+    if ((deviceType == INPUT_MODE_DEVICE_TYPE_WHEEL &&
+         (buttonSteerLeft->pinMask || buttonSteerRight->pinMask)) ||
+        (deviceType == INPUT_MODE_DEVICE_TYPE_GUITAR &&
+         (buttonWhammy->pinMask || buttonTilt->pinMask))) {
+        return;
     }
 
-    uint32_t const irq_state = save_and_disable_interrupts();
-    uint32_t const abort_mask = 1u << (2 * ep_num);
-    hw_set_bits(&usb_hw->abort, abort_mask);
-    while ((usb_hw->abort_done & abort_mask) != abort_mask) {}
-
-    volatile uint32_t * const buffer_control = &usb_dpram->ep_buf_ctrl[ep_num].in;
-    uint32_t const saved_control = *buffer_control;
-    bool const pending = (saved_control & (USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL)) ==
-            (USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL) &&
-        (saved_control & USB_BUF_CTRL_LEN_MASK) == total_bytes;
-    if (pending) {
-        uint32_t const endpoint_control = usb_dpram->ep_ctrl[ep_num - 1].in;
-        uint8_t * const dpram_buffer = reinterpret_cast<uint8_t *>(usb_dpram) +
-            (endpoint_control & 0xffffu);
-        *buffer_control = 0;
-        memcpy(dpram_buffer, buffer, total_bytes);
-        *buffer_control = saved_control & ~USB_BUF_CTRL_AVAIL;
-        busy_wait_at_least_cycles(12);
-        *buffer_control = saved_control;
+    GpioMappingInfo const *pinMappings = storage.getProfilePinMappings();
+    bool dualDirectionalMapped = false;
+    for (Pin_t pin = 0; pin < static_cast<Pin_t>(NUM_BANK0_GPIOS); ++pin) {
+        GpioAction const action = pinMappings[pin].action;
+        dualDirectionalMapped |= action == BUTTON_PRESS_DDI_UP || action == BUTTON_PRESS_DDI_DOWN ||
+            action == BUTTON_PRESS_DDI_LEFT || action == BUTTON_PRESS_DDI_RIGHT;
+        if (isDigitalAxisAction(action)) {
+            return;
+        }
     }
 
-    hw_clear_bits(&usb_hw->abort_done, abort_mask);
-    hw_clear_bits(&usb_hw->abort, abort_mask);
-    restore_interrupts(irq_state);
-    return pending;
-}
+    AddonOptions const &addons = storage.getAddonOptions();
+    if (dualDirectionalMapped && addons.dualDirectionalOptions.enabled &&
+        addons.dualDirectionalOptions.dpadMode != DPAD_MODE_DIGITAL) {
+        return;
+    }
+    if (addons.heTriggerOptions.enabled) {
+        for (HETriggerInfo const &trigger : addons.heTriggerOptions.triggers) {
+            if (isDigitalAxisAction(trigger.action)) {
+                return;
+            }
+        }
+    }
 
-static inline bool onlyAddsDigitalButtons(uint8_t const *pending, XInputReport const &current) {
-    return pending[offsetof(XInputReport, lt)] == current.lt &&
-        pending[offsetof(XInputReport, rt)] == current.rt &&
-        (pending[offsetof(XInputReport, buttons1)] & current.buttons1) ==
-            pending[offsetof(XInputReport, buttons1)] &&
-        (pending[offsetof(XInputReport, buttons2)] & current.buttons2) ==
-            pending[offsetof(XInputReport, buttons2)];
+    if (!storage.getGamepadOptions().lockHotkeys) {
+        HotkeyOptions const &hotkeys = storage.getHotkeyOptions();
+        GamepadHotkey const actions[] = {
+            hotkeys.hotkey01.action, hotkeys.hotkey02.action, hotkeys.hotkey03.action, hotkeys.hotkey04.action,
+            hotkeys.hotkey05.action, hotkeys.hotkey06.action, hotkeys.hotkey07.action, hotkeys.hotkey08.action,
+            hotkeys.hotkey09.action, hotkeys.hotkey10.action, hotkeys.hotkey11.action, hotkeys.hotkey12.action,
+            hotkeys.hotkey13.action, hotkeys.hotkey14.action, hotkeys.hotkey15.action, hotkeys.hotkey16.action,
+        };
+        for (GamepadHotkey const action : actions) {
+            switch (action) {
+                case HOTKEY_LS_UP:
+                case HOTKEY_LS_DOWN:
+                case HOTKEY_LS_LEFT:
+                case HOTKEY_LS_RIGHT:
+                case HOTKEY_RS_UP:
+                case HOTKEY_RS_DOWN:
+                case HOTKEY_RS_LEFT:
+                case HOTKEY_RS_RIGHT:
+                    return;
+                default:
+                    break;
+            }
+        }
+    }
+    analogSchedulingAllowed = true;
 }
-
-static inline uint32_t priorityState(uint8_t const *report) {
-    uint32_t state;
-    memcpy(&state, report + offsetof(XInputReport, buttons1), sizeof(state));
-    return state;
-}
-
-static inline uint32_t priorityState(XInputReport const &report) {
-    return priorityState(reinterpret_cast<uint8_t const *>(&report));
-}
-
-static inline bool onlyRemovesDeliveredButtons(uint32_t completed, uint32_t pending,
-                                               uint32_t current) {
-    static constexpr uint32_t BUTTONS = 0x0000ffff;
-    static constexpr uint32_t TRIGGERS = 0xffff0000;
-    return ((completed ^ pending) & TRIGGERS) == 0 &&
-        ((pending ^ current) & TRIGGERS) == 0 && pending != current &&
-        ((pending & completed) & BUTTONS) == (pending & BUTTONS) &&
-        ((current & pending) & BUTTONS) == (current & BUTTONS);
-}
-
-// Keep continuously changing axes from reserving the next USB poll for almost
-// the entire frame. Digital/trigger changes remain eligible immediately.
-static constexpr uint32_t XINPUT_ANALOG_QUEUE_DELAY_US = 650;
-// Hardware-validated endpoint rearm margins differ between RP2040 and RP2350.
-#if PICO_RP2350
-static constexpr uint32_t XINPUT_REPLACE_DEADLINE_US = 925;
-#else
-static constexpr uint32_t XINPUT_REPLACE_DEADLINE_US = 875;
-#endif
-static constexpr uint32_t XINPUT_MONOTONIC_PRESS_REPLACE_DEADLINE_US = 800;
-static constexpr uint32_t XINPUT_MONOTONIC_RELEASE_REPLACE_DEADLINE_US = 700;
 
 // Move to Proto Enums
 typedef enum
@@ -137,16 +141,13 @@ typedef enum
 } XInputPLEDPattern;
 
 static void xinput_init(void) {
-	xinput_last_in_complete_us = 0;
-	xinput_completed_priority = 0;
-	xinput_pending_axis_only = false;
+	USBReportScheduler::getInstance().configure(
+        XINPUT_REPORT_ENDPOINT_IN, XINPUT_POLL_INTERVAL_US);
 }
 
 static void xinput_reset(uint8_t rhport) {
     (void)rhport;
-	xinput_last_in_complete_us = 0;
-	xinput_completed_priority = 0;
-	xinput_pending_axis_only = false;
+	USBReportScheduler::getInstance().reset();
 }
 
 static uint16_t xinput_open(uint8_t rhport, tusb_desc_interface_t const *itf_descriptor, uint16_t max_length) {
@@ -171,6 +172,7 @@ static uint16_t xinput_open(uint8_t rhport, tusb_desc_interface_t const *itf_des
             if ( itf_descriptor->bInterfaceProtocol == 0x01 ) {
                 TU_ASSERT(usbd_open_edpt_pair(rhport, (const uint8_t*)p_desc, itf_descriptor->bNumEndpoints,
                             TUSB_XFER_INTERRUPT, &endpoint_out, &endpoint_in), 0);
+                USBReportScheduler::getInstance().start();
             }
         // Xbox 360 Security Interface
         } else if (itf_descriptor->bInterfaceSubClass == 0xFD &&
@@ -206,14 +208,17 @@ static bool xinput_control_complete(uint8_t rhport, tusb_control_request_t const
 static bool xinput_xfer_callback(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes)
 {
     (void)rhport;
-    (void)result;
     (void)xferred_bytes;
 
     if (ep_addr == endpoint_in) {
-        xinput_last_in_complete_us = time_us_32();
-        xinput_pending_axis_only = false;
-    } else if (ep_addr == endpoint_out)
+        if (result == XFER_RESULT_SUCCESS) {
+            USBReportScheduler::getInstance().onReportComplete();
+        } else {
+            USBReportScheduler::getInstance().onReportFailed();
+        }
+    } else if (ep_addr == endpoint_out) {
         usbd_edpt_xfer(0, endpoint_out, xinput_out_buffer, XINPUT_OUT_SIZE);
+    }
 
     return true;
 }
@@ -321,6 +326,7 @@ void XInputDriver::initialize() {
 
     xAuthDriver = nullptr;
     xAuthSent = false;
+    updateAnalogScheduling(Storage::getInstance().GetGamepad()->lastReinitProfileNumber);
 }
 
 void XInputDriver::initializeAux() {
@@ -346,6 +352,9 @@ bool XInputDriver::getAuthSent() {
 }
 
 bool __not_in_flash_func(XInputDriver::process)(Gamepad * gamepad) {
+    USBReportScheduler &scheduler = USBReportScheduler::getInstance();
+    scheduler.beginInputProcessing();
+
     Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
     Mask_t values = Storage::getInstance().GetGamepad()->debouncedGpio;
 
@@ -427,50 +436,22 @@ bool __not_in_flash_func(XInputDriver::process)(Gamepad * gamepad) {
 
     bool reportSent = false;
 
-    // Compare against the previous report and send new. Axis-only changes wait
-    // until late in the USB frame so a subsequent button change can supersede
-    // them without sacrificing the next 1 ms host poll.
-    bool priorityChanged = memcmp(last_report, &xinputReport, offsetof(XInputReport, lx)) != 0;
-    bool reportChanged = priorityChanged ||
-        memcmp(last_report + offsetof(XInputReport, lx),
-               reinterpret_cast<uint8_t *>(&xinputReport) + offsetof(XInputReport, lx),
-               sizeof(XInputReport) - offsetof(XInputReport, lx)) != 0;
-    bool axisOnly = reportChanged && !priorityChanged;
-    bool deferAnalog = reportChanged && !priorityChanged && xinput_last_in_complete_us != 0 &&
-        (uint32_t)(time_us_32() - xinput_last_in_complete_us) < XINPUT_ANALOG_QUEUE_DELAY_US;
-    uint32_t const currentPriority = priorityState(xinputReport);
-    bool monotonicPressReplacement = priorityChanged && !xinput_pending_axis_only &&
-        onlyAddsDigitalButtons(last_report, xinputReport);
-    bool monotonicReleaseReplacement = priorityChanged && !xinput_pending_axis_only &&
-        !monotonicPressReplacement &&
-        onlyRemovesDeliveredButtons(xinput_completed_priority,
-                                    priorityState(last_report),
-                                    currentPriority);
-    if (reportChanged && !deferAnalog) {
-        if (tud_ready() && (endpoint_in != 0) && !usbd_edpt_busy(0, endpoint_in)) {
-            xinput_completed_priority = priorityState(last_report);
-            usbd_edpt_claim(0, endpoint_in);								// Take control of IN endpoint
-            usbd_edpt_xfer(0, endpoint_in, (uint8_t *)&xinputReport, sizeof(XInputReport)); // Send report buffer
-            usbd_edpt_release(0, endpoint_in);								// Release control of IN endpoint
-            memcpy(last_report, &xinputReport, sizeof(XInputReport)); // save if we sent it
-            if (axisOnly) xinput_pending_axis_only = true;
+    USBReportPriority priority = {};
+    priority.digital = static_cast<uint64_t>(xinputReport.buttons1) |
+        (static_cast<uint64_t>(xinputReport.buttons2) << 8);
+    priority.triggers = static_cast<uint16_t>(xinputReport.lt) |
+        (static_cast<uint16_t>(xinputReport.rt) << 8);
+    // A hotkey can request the next profile before its mappings are applied.
+    if (analogSchedulingProfile != gamepad->lastReinitProfileNumber) {
+        updateAnalogScheduling(gamepad->lastReinitProfileNumber);
+    }
+    bool const allowAnalogScheduling = analogSchedulingAllowed &&
+        gamepad->getActiveDpadMode() == DPAD_MODE_DIGITAL;
+    if (memcmp(last_report, &xinputReport, sizeof(XInputReport)) != 0) {
+        if (scheduler.sendDirectReport(
+                &xinputReport, sizeof(XInputReport), priority, allowAnalogScheduling)) {
+            memcpy(last_report, &xinputReport, sizeof(XInputReport));
             reportSent = true;
-        } else if (tud_ready() && (endpoint_in != 0) && priorityChanged &&
-                   (xinput_pending_axis_only || monotonicPressReplacement ||
-                    monotonicReleaseReplacement) &&
-                   (uint32_t)(time_us_32() - xinput_last_in_complete_us) <
-                       (xinput_pending_axis_only ? XINPUT_REPLACE_DEADLINE_US :
-                        monotonicPressReplacement ? XINPUT_MONOTONIC_PRESS_REPLACE_DEADLINE_US :
-                                                    XINPUT_MONOTONIC_RELEASE_REPLACE_DEADLINE_US)) {
-            usbd_edpt_claim(0, endpoint_in);
-            if ((xinput_pending_axis_only || monotonicPressReplacement ||
-                monotonicReleaseReplacement) &&
-                replacePendingInBuffer(endpoint_in, (uint8_t const *)&xinputReport, sizeof(XInputReport))) {
-                memcpy(last_report, &xinputReport, sizeof(XInputReport));
-                xinput_pending_axis_only = false;
-                reportSent = true;
-            }
-            usbd_edpt_release(0, endpoint_in);
         }
     }
 
@@ -522,6 +503,7 @@ bool __not_in_flash_func(XInputDriver::process)(Gamepad * gamepad) {
         }
     }
 
+    scheduler.endInputProcessing();
     return reportSent;
 }
 

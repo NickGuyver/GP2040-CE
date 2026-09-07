@@ -147,6 +147,7 @@ private:
     uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max);
     float magnitudeCalculation(int stick_num, adc_instance & adc_inst);
     void radialDeadzone(int stick_num, adc_instance & adc_inst);
+    void processStick(int stick_num, Gamepad *gamepad, uint32_t joystickMax);
     adc_instance adc_pairs[ADC_COUNT];
     float deadzone_span[ADC_COUNT];
     float ema_previous_weight[ADC_COUNT];
