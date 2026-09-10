@@ -219,13 +219,7 @@ export default function AddonsConfigPage() {
 
 	const onSuccess = async (values: typeof DEFAULT_VALUES) => {
 		const flattened = flattenObject(storedData);
-
-		// Convert turbo LED color if available
-		const data = {
-			...values,
-			turboLedColor: hexToInt(values.turboLedColor || '#000000'),
-		};
-		const valuesSchema = schema.cast(data); // Strip invalid values
+		const valuesSchema = schema.cast(values); // Strip invalid values
 
 		// Compare what's changed and set it to resultObject
 		let resultObject = {};
