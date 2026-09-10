@@ -13,8 +13,22 @@ import { DEFAULT_KEYBOARD_MAPPING } from '../src/Data/Keyboard.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const port = process.env.PORT || 8080;
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use((req, res, next) => {
+	console.log('Request:', req.method, req.url);
+	next();
+});
+
+app.get('/api/getBoardDefinition', (req, res) => {
+	return res.send(readFileSync(path.resolve(__dirname, '../src/Data/Boards.json'), 'utf8'));
+});
+
 const { pico: picoController } = JSON.parse(
-	readFileSync(path.resolve(__dirname, '../src/Data/Controllers.json'), 'utf8'),
+	readFileSync(path.resolve(__dirname, '../src/Data/Boards.json'), 'utf8')
 );
 
 const BoardLights = [
@@ -262,7 +276,7 @@ const BoardLights = [
 const createPinMappings = ({ profileLabel = 'Profile', enabled = true }) => {
 	let pinMappings = { profileLabel, enabled };
 
-	for (const [key, value] of Object.entries(picoController)) {
+	for (const [key, value] of Object.entries(picoController.usedPins)) {
 		pinMappings[key] = {
 			action: value,
 			customButtonMask: 0,
@@ -272,18 +286,8 @@ const createPinMappings = ({ profileLabel = 'Profile', enabled = true }) => {
 	return pinMappings;
 };
 
-const port = process.env.PORT || 8080;
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use((req, res, next) => {
-	console.log('Request:', req.method, req.url);
-	next();
-});
-
 app.get('/api/getUsedPins', (req, res) => {
-	return res.send({ usedPins: Object.values(picoController) });
+	return res.send({ usedPins: Object.values(picoController.usedPins) });
 });
 
 app.get('/api/resetSettings', (req, res) => {
@@ -833,7 +837,7 @@ app.get('/api/getAddonsOptions', (req, res) => {
 		tg16PadDataPin3: -1,
 		TG16padAddonEnabled: 1,
 		HETriggerEnabled: 1,
-		usedPins: Object.values(picoController),
+		usedPins: Object.values(picoController.usedPins),
 	});
 });
 
