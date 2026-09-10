@@ -10,8 +10,9 @@ import FormControl from '../Components/FormControl';
 import AnalogPinOptions from '../Components/AnalogPinOptions';
 import { BUTTON_MASKS_OPTIONS } from '../Data/Buttons';
 import { DUAL_STICK_MODES } from '../Data/Addons';
-import { ANALOG_PINS } from '../Data/Buttons';
 import { AddonPropTypes } from '../Pages/AddonsConfigPage';
+
+import useBoardDefinition from '../Store/useBoardDefinitionStore';
 
 const SHMUP_MIXED_MODES = [
 	{ label: 'Turbo Priority', value: 0 },
@@ -137,6 +138,10 @@ const Turbo = ({
 	const { t } = useTranslation();
 
 	const { usedPins } = useContext(AppContext);
+	const { boardDefinition } = useBoardDefinition();
+
+	const ANALOG_PINS = boardDefinition.analogPins;
+
 	const availableAnalogPins = ANALOG_PINS.filter(
 		(pin) => !usedPins?.includes(pin),
 	);
@@ -194,7 +199,7 @@ const Turbo = ({
 						isInvalid={Boolean(errors.turboPinLED)}
 						onChange={handleChange}
 						min={-1}
-						max={29}
+						max={boardDefinition.maxPin}
 					/>
 				</Row>
 				<Row className="mb-3">
@@ -316,7 +321,7 @@ const Turbo = ({
 								isInvalid={Boolean(errors.pinShmupBtn1)}
 								onChange={handleChange}
 								min={-1}
-								max={29}
+								max={boardDefinition.maxPin}
 							/>
 							<FormControl
 								type="number"
@@ -329,7 +334,7 @@ const Turbo = ({
 								isInvalid={Boolean(errors.pinShmupBtn2)}
 								onChange={handleChange}
 								min={-1}
-								max={29}
+								max={boardDefinition.maxPin}
 							/>
 							<FormControl
 								type="number"
@@ -342,7 +347,7 @@ const Turbo = ({
 								isInvalid={Boolean(errors.pinShmupBtn3)}
 								onChange={handleChange}
 								min={-1}
-								max={29}
+								max={boardDefinition.maxPin}
 							/>
 							<FormControl
 								type="number"
@@ -355,7 +360,7 @@ const Turbo = ({
 								isInvalid={Boolean(errors.pinShmupBtn4)}
 								onChange={handleChange}
 								min={-1}
-								max={29}
+								max={boardDefinition.maxPin}
 							/>
 						</Row>
 						<Row className="mb-3">
