@@ -100,7 +100,8 @@ export const analogScheme = {
 		.validateRangeWhenValue('AnalogInputEnabled', 0, 100)
 		.when('AnalogInputEnabled', {
 			is: 1,
-			then: (schema: yup.NumberSchema) => schema.moreThan(yup.ref('inner_deadzone')),
+			then: (schema: yup.NumberSchema) =>
+				schema.moreThan(yup.ref('inner_deadzone')),
 		}),
 	outer_deadzone2: yup
 		.number()
@@ -108,7 +109,8 @@ export const analogScheme = {
 		.validateRangeWhenValue('AnalogInputEnabled', 0, 100)
 		.when('AnalogInputEnabled', {
 			is: 1,
-			then: (schema: yup.NumberSchema) => schema.moreThan(yup.ref('inner_deadzone2')),
+			then: (schema: yup.NumberSchema) =>
+				schema.moreThan(yup.ref('inner_deadzone2')),
 		}),
 	auto_calibrate: yup
 		.number()
@@ -158,14 +160,30 @@ export const analogScheme = {
 		.number()
 		.label('Joystick Center Y2')
 		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMinX: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMaxX: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMinY: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMaxY: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMinX2: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMaxX2: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMinY2: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
-	joystickMaxY2: yup.number().validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMinX: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMaxX: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMinY: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMaxY: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMinX2: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMaxX2: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMinY2: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
+	joystickMaxY2: yup
+		.number()
+		.validateRangeWhenValue('AnalogInputEnabled', 0, 4095),
 };
 
 export const analogState = {
@@ -206,7 +224,13 @@ export const analogState = {
 	analog_error2: 1000,
 };
 
-const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }: AddonPropTypes) => {
+const Analog = ({
+	values,
+	errors,
+	handleChange,
+	handleCheckbox,
+	setFieldValue,
+}: AddonPropTypes) => {
 	const { usedPins } = useContext(AppContext);
 	const { t } = useTranslation();
 	const { boardDefinition } = useBoardDefinition();
@@ -214,7 +238,10 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 	const ANALOG_PINS = boardDefinition.analogPins;
 
 	const [calibrationStep, setCalibrationStep] = useState('');
-	const calibration = useRef<{ controller: AbortController; centerStarted: number } | null>(null);
+	const calibration = useRef<{
+		controller: AbortController;
+		centerStarted: number;
+	} | null>(null);
 
 	useEffect(() => {
 		return () => {
@@ -257,11 +284,23 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 
 			while (!signal.aborted) {
 				const timeout = setTimeout(() => {
-					session.controller.abort(new Error(t('AddonsConfig:analog-calibration-connection-timeout')));
+					session.controller.abort(
+						new Error(t('AddonsConfig:analog-calibration-connection-timeout')),
+					);
 				}, 5000);
-				let sample: { success: boolean; error?: string; pinX: number; pinY: number; x: number; y: number };
+				let sample: {
+					success: boolean;
+					error?: string;
+					pinX: number;
+					pinY: number;
+					x: number;
+					y: number;
+				};
 				try {
-					const response = await fetch(`/api/getJoystickCenter${suffix}`, { signal, cache: 'no-store' });
+					const response = await fetch(`/api/getJoystickCenter${suffix}`, {
+						signal,
+						cache: 'no-store',
+					});
 					if (!response.ok) {
 						throw new Error(`HTTP ${response.status}`);
 					}
@@ -280,17 +319,29 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 					throw new Error(t('AddonsConfig:analog-calibration-save-pins'));
 				}
 
-				const readings = axes.map(({ axis }) => sample[axis === 'X' ? 'x' : 'y']);
-				if (readings.some((value) => !Number.isInteger(value) || value < 0 || value > 4095)) {
+				const readings = axes.map(
+					({ axis }) => sample[axis === 'X' ? 'x' : 'y'],
+				);
+				if (
+					readings.some(
+						(value) => !Number.isInteger(value) || value < 0 || value > 4095,
+					)
+				) {
 					throw new Error('Invalid ADC reading');
 				}
 
 				if (!session.centerStarted) {
 					axes.forEach((axis, index) => {
-						axis.low = [...axis.low, readings[index]].sort((a, b) => a - b).slice(0, 2);
-						axis.high = [...axis.high, readings[index]].sort((a, b) => b - a).slice(0, 2);
+						axis.low = [...axis.low, readings[index]]
+							.sort((a, b) => a - b)
+							.slice(0, 2);
+						axis.high = [...axis.high, readings[index]]
+							.sort((a, b) => b - a)
+							.slice(0, 2);
 					});
-					const hasEnoughTravel = axes.every(({ low, high }) => high[1] - low[1] >= 64);
+					const hasEnoughTravel = axes.every(
+						({ low, high }) => high[1] - low[1] >= 64,
+					);
 					setCalibrationStep(hasEnoughTravel ? 'ready' : 'rotation');
 				} else {
 					const now = performance.now();
@@ -298,8 +349,10 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 						throw new Error(t('AddonsConfig:analog-calibration-rest-timeout'));
 					}
 
-					const nearTravelLimit = axes.some(({ low, high }, index) =>
-						readings[index] - low[1] < 32 || high[1] - readings[index] < 32);
+					const nearTravelLimit = axes.some(
+						({ low, high }, index) =>
+							readings[index] - low[1] < 32 || high[1] - readings[index] < 32,
+					);
 					if (nearTravelLimit) {
 						restSamples.length = 0;
 					} else {
@@ -315,19 +368,35 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 						}
 					}
 
-					const centerIsStable = restSamples.length >= 10 && now - restSamples[0].time >= 1000;
+					const centerIsStable =
+						restSamples.length >= 10 && now - restSamples[0].time >= 1000;
 					if (centerIsStable) {
 						for (const axis of ['X', 'Y']) {
 							const index = axes.findIndex((entry) => entry.axis === axis);
 							const limits = axes[index];
 							let center = 0;
 							if (limits) {
-								const total = restSamples.reduce((sum, sample) => sum + sample.values[index], 0);
+								const total = restSamples.reduce(
+									(sum, sample) => sum + sample.values[index],
+									0,
+								);
 								center = Math.round(total / restSamples.length);
 							}
-							await setFieldValue(`joystickCenter${axis}${suffix}`, center, false);
-							await setFieldValue(`joystickMin${axis}${suffix}`, limits?.low[1] ?? 0, false);
-							await setFieldValue(`joystickMax${axis}${suffix}`, limits?.high[1] ?? 4095, false);
+							await setFieldValue(
+								`joystickCenter${axis}${suffix}`,
+								center,
+								false,
+							);
+							await setFieldValue(
+								`joystickMin${axis}${suffix}`,
+								limits?.low[1] ?? 0,
+								false,
+							);
+							await setFieldValue(
+								`joystickMax${axis}${suffix}`,
+								limits?.high[1] ?? 4095,
+								false,
+							);
 						}
 						alert(t('AddonsConfig:analog-calibration-save-notice'));
 						return;
@@ -337,7 +406,11 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 			}
 		} catch (error) {
 			if (signal.reason !== 'cancel') {
-				alert(t('AddonsConfig:analog-calibration-failed', { error: String(signal.reason || error) }));
+				alert(
+					t('AddonsConfig:analog-calibration-failed', {
+						error: String(signal.reason || error),
+					}),
+				);
 			}
 		} finally {
 			if (calibration.current === session) {
@@ -347,7 +420,10 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 		}
 	};
 
-	const handlePinChange = (event: React.ChangeEvent<HTMLSelectElement>, axis: string) => {
+	const handlePinChange = (
+		event: React.ChangeEvent<HTMLSelectElement>,
+		axis: string,
+	) => {
 		setFieldValue(`joystickCenter${axis}`, 0, false);
 		setFieldValue(`joystickMin${axis}`, 0, false);
 		setFieldValue(`joystickMax${axis}`, 4095, false);
@@ -359,15 +435,16 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 	);
 
 	return (
-		<Section title={
-			<a
-				href="https://gp2040-ce.info/add-ons/analog"
-				target="_blank"
-				className="text-reset text-decoration-none"
-			>
-				{t('AddonsConfig:analog-header-text')}
-			</a>
-		}
+		<Section
+			title={
+				<a
+					href="https://gp2040-ce.info/add-ons/analog"
+					target="_blank"
+					className="text-reset text-decoration-none"
+				>
+					{t('AddonsConfig:analog-header-text')}
+				</a>
+			}
 		>
 			<div id="AnalogInputOptions" hidden={!values.AnalogInputEnabled}>
 				<div className="alert alert-info" role="alert">
@@ -378,401 +455,433 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 						pins: availableAnalogPins.join(', '),
 					})}
 				</div>
-					<Tabs
-						defaultActiveKey="analog1Config"
-						id="analogConfigTabs"
-						className="mb-3 pb-0"
-						fill
+				<Tabs
+					defaultActiveKey="analog1Config"
+					id="analogConfigTabs"
+					className="mb-3 pb-0"
+					fill
+				>
+					<Tab
+						key="analog1Config"
+						eventKey="analog1Config"
+						title={t('AddonsConfig:analog-adc-1')}
 					>
-						<Tab
-							key="analog1Config"
-							eventKey="analog1Config"
-							title={t('AddonsConfig:analog-adc-1')}
-						>
+						<Row className="mb-3">
+							<FormSelect
+								label={t('AddonsConfig:analog-adc-1-pin-x-label')}
+								name="analogAdc1PinX"
+								className="form-select-sm"
+								groupClassName="col-sm-3 mb-3"
+								value={values.analogAdc1PinX}
+								error={errors.analogAdc1PinX}
+								isInvalid={Boolean(errors.analogAdc1PinX)}
+								onChange={(event) => handlePinChange(event, 'X')}
+							>
+								<AnalogPinOptions />
+							</FormSelect>
+							<FormSelect
+								label={t('AddonsConfig:analog-adc-1-pin-y-label')}
+								name="analogAdc1PinY"
+								className="form-select-sm"
+								groupClassName="col-sm-3 mb-3"
+								value={values.analogAdc1PinY}
+								error={errors.analogAdc1PinY}
+								isInvalid={Boolean(errors.analogAdc1PinY)}
+								onChange={(event) => handlePinChange(event, 'Y')}
+							>
+								<AnalogPinOptions />
+							</FormSelect>
 							<Row className="mb-3">
 								<FormSelect
-									label={t('AddonsConfig:analog-adc-1-pin-x-label')}
-									name="analogAdc1PinX"
+									label={t('AddonsConfig:analog-adc-1-mode-label')}
+									name="analogAdc1Mode"
 									className="form-select-sm"
 									groupClassName="col-sm-3 mb-3"
-									value={values.analogAdc1PinX}
-									error={errors.analogAdc1PinX}
-									isInvalid={Boolean(errors.analogAdc1PinX)}
-									onChange={(event) => handlePinChange(event, 'X')}
+									value={values.analogAdc1Mode}
+									error={errors.analogAdc1Mode}
+									isInvalid={Boolean(errors.analogAdc1Mode)}
+									onChange={handleChange}
 								>
-									<AnalogPinOptions />
+									{ANALOG_STICK_MODES.map((o, i) => (
+										<option
+											key={`button-analogAdc1Mode-option-${i}`}
+											value={o.value}
+										>
+											{o.label}
+										</option>
+									))}
 								</FormSelect>
 								<FormSelect
-									label={t('AddonsConfig:analog-adc-1-pin-y-label')}
-									name="analogAdc1PinY"
+									label={t('AddonsConfig:analog-adc-1-invert-label')}
+									name="analogAdc1Invert"
 									className="form-select-sm"
 									groupClassName="col-sm-3 mb-3"
-									value={values.analogAdc1PinY}
-									error={errors.analogAdc1PinY}
-									isInvalid={Boolean(errors.analogAdc1PinY)}
-									onChange={(event) => handlePinChange(event, 'Y')}
+									value={values.analogAdc1Invert}
+									error={errors.analogAdc1Invert}
+									isInvalid={Boolean(errors.analogAdc1Invert)}
+									onChange={handleChange}
 								>
-									<AnalogPinOptions />
+									{INVERT_MODES.map((o, i) => (
+										<option
+											key={`button-analogAdc1Invert-option-${i}`}
+											value={o.value}
+										>
+											{o.label}
+										</option>
+									))}
 								</FormSelect>
-								<Row className="mb-3">
-									<FormSelect
-										label={t('AddonsConfig:analog-adc-1-mode-label')}
-										name="analogAdc1Mode"
-										className="form-select-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analogAdc1Mode}
-										error={errors.analogAdc1Mode}
-										isInvalid={Boolean(errors.analogAdc1Mode)}
-										onChange={handleChange}
-									>
-										{ANALOG_STICK_MODES.map((o, i) => (
-											<option key={`button-analogAdc1Mode-option-${i}`} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-									<FormSelect
-										label={t('AddonsConfig:analog-adc-1-invert-label')}
-										name="analogAdc1Invert"
-										className="form-select-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analogAdc1Invert}
-										error={errors.analogAdc1Invert}
-										isInvalid={Boolean(errors.analogAdc1Invert)}
-										onChange={handleChange}
-									>
-										{INVERT_MODES.map((o, i) => (
-											<option
-												key={`button-analogAdc1Invert-option-${i}`}
-												value={o.value}
-											>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-								</Row>
-								<Row className="mb-3">
-									<FormControl
-										type="number"
-										label={t('AddonsConfig:inner-deadzone-size')}
-										name="inner_deadzone"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.inner_deadzone}
-										error={errors.inner_deadzone}
-										isInvalid={Boolean(errors.inner_deadzone)}
-										onChange={handleChange}
-										min={0}
-										max={99}
-									/>
-									<FormControl
-										type="number"
-										label={t('AddonsConfig:outer-deadzone-size')}
-										name="outer_deadzone"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.outer_deadzone}
-										error={errors.outer_deadzone}
-										isInvalid={Boolean(errors.outer_deadzone)}
-										onChange={handleChange}
-										min={Math.min(Number(values.inner_deadzone) + 1, 100)}
-										max={100}
-									/>
-								</Row>
-								<Row className="mb-3">
-									<FormCheck
-										label={t('AddonsConfig:analog-smoothing')}
-										type="switch"
-										id="Analog_smoothing"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.analog_smoothing)}
-										onChange={(e) => {
-											handleCheckbox('analog_smoothing');
-											handleChange(e);
-										}}
-									/>
-									<FormControl
-										hidden={!values.analog_smoothing}
-										type="number"
-										label={t('AddonsConfig:smoothing-factor')}
-										name="smoothing_factor"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.smoothing_factor}
-										error={errors.smoothing_factor}
-										isInvalid={Boolean(errors.smoothing_factor)}
-										onChange={handleChange}
-										min={0}
-										max={10}
-									/>
-								</Row>
-								<Row className="mb-3">
-									<FormCheck
-										label={t('AddonsConfig:analog-force-circularity')}
-										type="switch"
-										id="Forced_circularity"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.forced_circularity)}
-										onChange={(e) => {
-											handleCheckbox('forced_circularity');
-											handleChange(e);
-										}}
-									/>
-									<FormSelect
-										hidden={!values.forced_circularity}
-										label={t('AddonsConfig:analog-error-label')}
-										name="analog_error"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analog_error}
-										onChange={handleChange}
-									>
-										{ANALOG_ERROR_RATES.map((o, i) => (
-											<option key={`analog_error-option-${i}`} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-								</Row>
-								<Row className="align-items-center">
-									<FormCheck
-										label={t('AddonsConfig:analog-auto-calibrate')}
-										type="switch"
-										id="Auto_calibrate"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.auto_calibrate)}
-										onChange={(e) => {
-											handleCheckbox('auto_calibrate');
-											handleChange(e);
-										}}
-									/>
-									<button
-										type="button"
-										className="col-auto btn btn-sm btn-outline-secondary ms-2"
-										disabled={Boolean(values.auto_calibrate)}
-										onClick={() => calibrateStick(1)}
-									>
-										{t('AddonsConfig:analog-calibrate-stick-1-button')}
-									</button>
-									<div className="col-auto ms-3 small text-muted">
-										{`Center: X=${values.joystickCenterX}, Y=${values.joystickCenterY}`}
-									</div>
-								</Row>
-								{Boolean(values.auto_calibrate) && (
-									<div className="alert alert-info mt-2 mb-3">
-										<small>
-											<strong>{t('AddonsConfig:analog-auto-calibration-enabled-stick-1')}：</strong> {t('AddonsConfig:analog-calibration-auto-mode-instruction', { stick: '1' })}
-										</small>
-									</div>
-								)}
-								{!Boolean(values.auto_calibrate) && (
-									<div className="alert alert-warning mt-2 mb-3">
-										<small>
-											<strong>{t('AddonsConfig:analog-manual-calibration-mode-stick-1')}：</strong> 
-										<br />{t('AddonsConfig:analog-calibration-rotation-overview')}
-										</small>
-									</div>
-								)}
 							</Row>
-						</Tab>
-						<Tab
-							key="analog2Config"
-							eventKey="analog2Config"
-							title={t('AddonsConfig:analog-adc-2')}
-						>
+							<Row className="mb-3">
+								<FormControl
+									type="number"
+									label={t('AddonsConfig:inner-deadzone-size')}
+									name="inner_deadzone"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.inner_deadzone}
+									error={errors.inner_deadzone}
+									isInvalid={Boolean(errors.inner_deadzone)}
+									onChange={handleChange}
+									min={0}
+									max={99}
+								/>
+								<FormControl
+									type="number"
+									label={t('AddonsConfig:outer-deadzone-size')}
+									name="outer_deadzone"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.outer_deadzone}
+									error={errors.outer_deadzone}
+									isInvalid={Boolean(errors.outer_deadzone)}
+									onChange={handleChange}
+									min={Math.min(Number(values.inner_deadzone) + 1, 100)}
+									max={100}
+								/>
+							</Row>
+							<Row className="mb-3">
+								<FormCheck
+									label={t('AddonsConfig:analog-smoothing')}
+									type="switch"
+									id="Analog_smoothing"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.analog_smoothing)}
+									onChange={(e) => {
+										handleCheckbox('analog_smoothing');
+										handleChange(e);
+									}}
+								/>
+								<FormControl
+									hidden={!values.analog_smoothing}
+									type="number"
+									label={t('AddonsConfig:smoothing-factor')}
+									name="smoothing_factor"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.smoothing_factor}
+									error={errors.smoothing_factor}
+									isInvalid={Boolean(errors.smoothing_factor)}
+									onChange={handleChange}
+									min={0}
+									max={10}
+								/>
+							</Row>
+							<Row className="mb-3">
+								<FormCheck
+									label={t('AddonsConfig:analog-force-circularity')}
+									type="switch"
+									id="Forced_circularity"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.forced_circularity)}
+									onChange={(e) => {
+										handleCheckbox('forced_circularity');
+										handleChange(e);
+									}}
+								/>
+								<FormSelect
+									hidden={!values.forced_circularity}
+									label={t('AddonsConfig:analog-error-label')}
+									name="analog_error"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.analog_error}
+									onChange={handleChange}
+								>
+									{ANALOG_ERROR_RATES.map((o, i) => (
+										<option key={`analog_error-option-${i}`} value={o.value}>
+											{o.label}
+										</option>
+									))}
+								</FormSelect>
+							</Row>
+							<Row className="align-items-center">
+								<FormCheck
+									label={t('AddonsConfig:analog-auto-calibrate')}
+									type="switch"
+									id="Auto_calibrate"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.auto_calibrate)}
+									onChange={(e) => {
+										handleCheckbox('auto_calibrate');
+										handleChange(e);
+									}}
+								/>
+								<button
+									type="button"
+									className="col-auto btn btn-sm btn-outline-secondary ms-2"
+									disabled={Boolean(values.auto_calibrate)}
+									onClick={() => calibrateStick(1)}
+								>
+									{t('AddonsConfig:analog-calibrate-stick-1-button')}
+								</button>
+								<div className="col-auto ms-3 small text-muted">
+									{`Center: X=${values.joystickCenterX}, Y=${values.joystickCenterY}`}
+								</div>
+							</Row>
+							{Boolean(values.auto_calibrate) && (
+								<div className="alert alert-info mt-2 mb-3">
+									<small>
+										<strong>
+											{t(
+												'AddonsConfig:analog-auto-calibration-enabled-stick-1',
+											)}
+											：
+										</strong>{' '}
+										{t(
+											'AddonsConfig:analog-calibration-auto-mode-instruction',
+											{ stick: '1' },
+										)}
+									</small>
+								</div>
+							)}
+							{!Boolean(values.auto_calibrate) && (
+								<div className="alert alert-warning mt-2 mb-3">
+									<small>
+										<strong>
+											{t('AddonsConfig:analog-manual-calibration-mode-stick-1')}
+											：
+										</strong>
+										<br />
+										{t('AddonsConfig:analog-calibration-rotation-overview')}
+									</small>
+								</div>
+							)}
+						</Row>
+					</Tab>
+					<Tab
+						key="analog2Config"
+						eventKey="analog2Config"
+						title={t('AddonsConfig:analog-adc-2')}
+					>
+						<Row className="mb-3">
+							<FormSelect
+								label={t('AddonsConfig:analog-adc-2-pin-x-label')}
+								name="analogAdc2PinX"
+								className="form-select-sm"
+								groupClassName="col-sm-3 mb-3"
+								value={values.analogAdc2PinX}
+								error={errors.analogAdc2PinX}
+								isInvalid={Boolean(errors.analogAdc2PinX)}
+								onChange={(event) => handlePinChange(event, 'X2')}
+							>
+								<AnalogPinOptions />
+							</FormSelect>
+							<FormSelect
+								label={t('AddonsConfig:analog-adc-2-pin-y-label')}
+								name="analogAdc2PinY"
+								className="form-select-sm"
+								groupClassName="col-sm-3 mb-3"
+								value={values.analogAdc2PinY}
+								error={errors.analogAdc2PinY}
+								isInvalid={Boolean(errors.analogAdc2PinY)}
+								onChange={(event) => handlePinChange(event, 'Y2')}
+							>
+								<AnalogPinOptions />
+							</FormSelect>
 							<Row className="mb-3">
 								<FormSelect
-									label={t('AddonsConfig:analog-adc-2-pin-x-label')}
-									name="analogAdc2PinX"
+									label={t('AddonsConfig:analog-adc-2-mode-label')}
+									name="analogAdc2Mode"
 									className="form-select-sm"
 									groupClassName="col-sm-3 mb-3"
-									value={values.analogAdc2PinX}
-									error={errors.analogAdc2PinX}
-									isInvalid={Boolean(errors.analogAdc2PinX)}
-									onChange={(event) => handlePinChange(event, 'X2')}
+									value={values.analogAdc2Mode}
+									error={errors.analogAdc2Mode}
+									isInvalid={Boolean(errors.analogAdc2Mode)}
+									onChange={handleChange}
 								>
-									<AnalogPinOptions />
+									{ANALOG_STICK_MODES.map((o, i) => (
+										<option
+											key={`button-analogAdc2Mode-option-${i}`}
+											value={o.value}
+										>
+											{o.label}
+										</option>
+									))}
 								</FormSelect>
 								<FormSelect
-									label={t('AddonsConfig:analog-adc-2-pin-y-label')}
-									name="analogAdc2PinY"
+									label={t('AddonsConfig:analog-adc-2-invert-label')}
+									name="analogAdc2Invert"
 									className="form-select-sm"
 									groupClassName="col-sm-3 mb-3"
-									value={values.analogAdc2PinY}
-									error={errors.analogAdc2PinY}
-									isInvalid={Boolean(errors.analogAdc2PinY)}
-									onChange={(event) => handlePinChange(event, 'Y2')}
+									value={values.analogAdc2Invert}
+									error={errors.analogAdc2Invert}
+									isInvalid={Boolean(errors.analogAdc2Invert)}
+									onChange={handleChange}
 								>
-									<AnalogPinOptions />
+									{INVERT_MODES.map((o, i) => (
+										<option
+											key={`button-analogAdc2Invert-option-${i}`}
+											value={o.value}
+										>
+											{o.label}
+										</option>
+									))}
 								</FormSelect>
-								<Row className="mb-3">
-									<FormSelect
-										label={t('AddonsConfig:analog-adc-2-mode-label')}
-										name="analogAdc2Mode"
-										className="form-select-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analogAdc2Mode}
-										error={errors.analogAdc2Mode}
-										isInvalid={Boolean(errors.analogAdc2Mode)}
-										onChange={handleChange}
-									>
-										{ANALOG_STICK_MODES.map((o, i) => (
-											<option key={`button-analogAdc2Mode-option-${i}`} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-									<FormSelect
-										label={t('AddonsConfig:analog-adc-2-invert-label')}
-										name="analogAdc2Invert"
-										className="form-select-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analogAdc2Invert}
-										error={errors.analogAdc2Invert}
-										isInvalid={Boolean(errors.analogAdc2Invert)}
-										onChange={handleChange}
-									>
-										{INVERT_MODES.map((o, i) => (
-											<option
-												key={`button-analogAdc2Invert-option-${i}`}
-												value={o.value}
-											>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-								</Row>
-								<Row className="mb-3">
-									<FormControl
-										type="number"
-										label={t('AddonsConfig:inner-deadzone-size')}
-										name="inner_deadzone2"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.inner_deadzone2}
-										error={errors.inner_deadzone2}
-										isInvalid={Boolean(errors.inner_deadzone2)}
-										onChange={handleChange}
-										min={0}
-										max={99}
-									/>
-									<FormControl
-										type="number"
-										label={t('AddonsConfig:outer-deadzone-size')}
-										name="outer_deadzone2"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.outer_deadzone2}
-										error={errors.outer_deadzone2}
-										isInvalid={Boolean(errors.outer_deadzone2)}
-										onChange={handleChange}
-										min={Math.min(Number(values.inner_deadzone2) + 1, 100)}
-										max={100}
-									/>
-								</Row>
-								<Row className="mb-3">
-									<FormCheck
-										label={t('AddonsConfig:analog-smoothing')}
-										type="switch"
-										id="Analog_smoothing2"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.analog_smoothing2)}
-										onChange={(e) => {
-											handleCheckbox('analog_smoothing2');
-											handleChange(e);
-										}}
-									/>
-									<FormControl
-										hidden={!values.analog_smoothing2}
-										type="number"
-										label={t('AddonsConfig:smoothing-factor')}
-										name="smoothing_factor2"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.smoothing_factor2}
-										error={errors.smoothing_factor2}
-										isInvalid={Boolean(errors.smoothing_factor2)}
-										onChange={handleChange}
-										min={0}
-										max={10}
-									/>
-								</Row>
-								<Row className="mb-3">
-									<FormCheck
-										label={t('AddonsConfig:analog-force-circularity')}
-										type="switch"
-										id="Forced_circularity2"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.forced_circularity2)}
-										onChange={(e) => {
-											handleCheckbox('forced_circularity2');
-											handleChange(e);
-										}}
-									/>
-									<FormSelect
-										hidden={!values.forced_circularity2}
-										label={t('AddonsConfig:analog-error-label')}
-										name="analog_error2"
-										className="form-control-sm"
-										groupClassName="col-sm-3 mb-3"
-										value={values.analog_error2}
-										onChange={handleChange}
-									>
-										{ANALOG_ERROR_RATES.map((o, i) => (
-											<option key={`analog_error-option-${i}`} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</FormSelect>
-								</Row>
-								<Row className="align-items-center">
-									<FormCheck
-										label={t('AddonsConfig:analog-auto-calibrate')}
-										type="switch"
-										id="Auto_calibrate2"
-										className="col-sm-3 ms-3"
-										isInvalid={false}
-										checked={Boolean(values.auto_calibrate2)}
-										onChange={(e) => {
-											handleCheckbox('auto_calibrate2');
-											handleChange(e);
-										}}
-									/>
-									<button
-										type="button"
-										className="col-auto btn btn-sm btn-outline-secondary ms-2"
-										disabled={Boolean(values.auto_calibrate2)}
-										onClick={() => calibrateStick(2)}
-									>
-										{t('AddonsConfig:analog-calibrate-stick-2-button')}
-									</button>
-									<div className="col-auto ms-3 small text-muted">
-										{`Center: X=${values.joystickCenterX2}, Y=${values.joystickCenterY2}`}
-									</div>
-								</Row>
-								{Boolean(values.auto_calibrate2) && (
-									<div className="alert alert-info mt-2 mb-3">
-										<small>
-											<strong>{t('AddonsConfig:analog-auto-calibration-enabled-stick-2')}：</strong> {t('AddonsConfig:analog-calibration-auto-mode-instruction', { stick: '2' })}
-										</small>
-									</div>
-								)}
-								{!Boolean(values.auto_calibrate2) && (
-									<div className="alert alert-warning mt-2 mb-3">
-										<small>
-											<strong>{t('AddonsConfig:analog-manual-calibration-mode-stick-2')}：</strong> 
-										<br />{t('AddonsConfig:analog-calibration-rotation-overview')}
-										</small>
-									</div>
-								)}
 							</Row>
-						</Tab>
-					</Tabs>
+							<Row className="mb-3">
+								<FormControl
+									type="number"
+									label={t('AddonsConfig:inner-deadzone-size')}
+									name="inner_deadzone2"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.inner_deadzone2}
+									error={errors.inner_deadzone2}
+									isInvalid={Boolean(errors.inner_deadzone2)}
+									onChange={handleChange}
+									min={0}
+									max={99}
+								/>
+								<FormControl
+									type="number"
+									label={t('AddonsConfig:outer-deadzone-size')}
+									name="outer_deadzone2"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.outer_deadzone2}
+									error={errors.outer_deadzone2}
+									isInvalid={Boolean(errors.outer_deadzone2)}
+									onChange={handleChange}
+									min={Math.min(Number(values.inner_deadzone2) + 1, 100)}
+									max={100}
+								/>
+							</Row>
+							<Row className="mb-3">
+								<FormCheck
+									label={t('AddonsConfig:analog-smoothing')}
+									type="switch"
+									id="Analog_smoothing2"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.analog_smoothing2)}
+									onChange={(e) => {
+										handleCheckbox('analog_smoothing2');
+										handleChange(e);
+									}}
+								/>
+								<FormControl
+									hidden={!values.analog_smoothing2}
+									type="number"
+									label={t('AddonsConfig:smoothing-factor')}
+									name="smoothing_factor2"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.smoothing_factor2}
+									error={errors.smoothing_factor2}
+									isInvalid={Boolean(errors.smoothing_factor2)}
+									onChange={handleChange}
+									min={0}
+									max={10}
+								/>
+							</Row>
+							<Row className="mb-3">
+								<FormCheck
+									label={t('AddonsConfig:analog-force-circularity')}
+									type="switch"
+									id="Forced_circularity2"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.forced_circularity2)}
+									onChange={(e) => {
+										handleCheckbox('forced_circularity2');
+										handleChange(e);
+									}}
+								/>
+								<FormSelect
+									hidden={!values.forced_circularity2}
+									label={t('AddonsConfig:analog-error-label')}
+									name="analog_error2"
+									className="form-control-sm"
+									groupClassName="col-sm-3 mb-3"
+									value={values.analog_error2}
+									onChange={handleChange}
+								>
+									{ANALOG_ERROR_RATES.map((o, i) => (
+										<option key={`analog_error-option-${i}`} value={o.value}>
+											{o.label}
+										</option>
+									))}
+								</FormSelect>
+							</Row>
+							<Row className="align-items-center">
+								<FormCheck
+									label={t('AddonsConfig:analog-auto-calibrate')}
+									type="switch"
+									id="Auto_calibrate2"
+									className="col-sm-3 ms-3"
+									isInvalid={false}
+									checked={Boolean(values.auto_calibrate2)}
+									onChange={(e) => {
+										handleCheckbox('auto_calibrate2');
+										handleChange(e);
+									}}
+								/>
+								<button
+									type="button"
+									className="col-auto btn btn-sm btn-outline-secondary ms-2"
+									disabled={Boolean(values.auto_calibrate2)}
+									onClick={() => calibrateStick(2)}
+								>
+									{t('AddonsConfig:analog-calibrate-stick-2-button')}
+								</button>
+								<div className="col-auto ms-3 small text-muted">
+									{`Center: X=${values.joystickCenterX2}, Y=${values.joystickCenterY2}`}
+								</div>
+							</Row>
+							{Boolean(values.auto_calibrate2) && (
+								<div className="alert alert-info mt-2 mb-3">
+									<small>
+										<strong>
+											{t(
+												'AddonsConfig:analog-auto-calibration-enabled-stick-2',
+											)}
+											：
+										</strong>{' '}
+										{t(
+											'AddonsConfig:analog-calibration-auto-mode-instruction',
+											{ stick: '2' },
+										)}
+									</small>
+								</div>
+							)}
+							{!Boolean(values.auto_calibrate2) && (
+								<div className="alert alert-warning mt-2 mb-3">
+									<small>
+										<strong>
+											{t('AddonsConfig:analog-manual-calibration-mode-stick-2')}
+											：
+										</strong>
+										<br />
+										{t('AddonsConfig:analog-calibration-rotation-overview')}
+									</small>
+								</div>
+							)}
+						</Row>
+					</Tab>
+				</Tabs>
 			</div>
 			<Modal
 				show={!!calibrationStep}
@@ -780,19 +889,29 @@ const Analog = ({ values, errors, handleChange, handleCheckbox, setFieldValue }:
 				onHide={() => calibration.current?.controller.abort('cancel')}
 			>
 				<Modal.Header closeButton>
-					<Modal.Title>{t('AddonsConfig:analog-calibration-title')}</Modal.Title>
+					<Modal.Title>
+						{t('AddonsConfig:analog-calibration-title')}
+					</Modal.Title>
 				</Modal.Header>
 				<Modal.Body role="status">
-					{t(calibrationStep === 'center'
-						? 'AddonsConfig:analog-calibration-release'
-						: 'AddonsConfig:analog-calibration-rotate')}
+					{t(
+						calibrationStep === 'center'
+							? 'AddonsConfig:analog-calibration-release'
+							: 'AddonsConfig:analog-calibration-rotate',
+					)}
 				</Modal.Body>
 				<Modal.Footer>
-					<Button variant="secondary" onClick={() => calibration.current?.controller.abort('cancel')}>
+					<Button
+						variant="secondary"
+						onClick={() => calibration.current?.controller.abort('cancel')}
+					>
 						{t('AddonsConfig:analog-calibration-cancel')}
 					</Button>
 					{calibrationStep !== 'center' && (
-						<Button disabled={calibrationStep !== 'ready'} onClick={captureCenter}>
+						<Button
+							disabled={calibrationStep !== 'ready'}
+							onClick={captureCenter}
+						>
 							{t('AddonsConfig:analog-calibration-done-rotating')}
 						</Button>
 					)}

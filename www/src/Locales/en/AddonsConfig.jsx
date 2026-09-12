@@ -34,22 +34,31 @@ export default {
 	'analog-calibrate-stick-1-button': 'Calibrate Stick 1',
 	'analog-calibrate-stick-2-button': 'Calibrate Stick 2',
 	'analog-calibration-title': 'Analog calibration',
-	'analog-calibration-rotation-overview': 'Start calibration and slowly sweep the full range several times. Select "Capture resting center", then let go and keep the stick untouched until calibration finishes. Save the configuration and restart to apply it.',
-	'analog-calibration-rotate': 'Slowly rotate the stick around its full outer edge several times, or sweep a single connected axis through its full travel. Then select "Capture resting center".',
+	'analog-calibration-rotation-overview':
+		'Start calibration and slowly sweep the full range several times. Select "Capture resting center", then let go and keep the stick untouched until calibration finishes. Save the configuration and restart to apply it.',
+	'analog-calibration-rotate':
+		'Slowly rotate the stick around its full outer edge several times, or sweep a single connected axis through its full travel. Then select "Capture resting center".',
 	'analog-calibration-done-rotating': 'Capture resting center',
-	'analog-calibration-release': 'Let go of the stick and leave it untouched. The center will be captured automatically once the readings stay steady.',
+	'analog-calibration-release':
+		'Let go of the stick and leave it untouched. The center will be captured automatically once the readings stay steady.',
 	'analog-calibration-cancel': 'Cancel',
-	'analog-calibration-connection-timeout': 'The controller did not respond. Check the connection and try again.',
-	'analog-calibration-rest-timeout': 'The stick did not settle away from its travel limits. Release it completely and try calibration again.',
-	'analog-calibration-select-pins': 'Select at least one analog ADC pin and save before calibrating.',
-	'analog-calibration-save-pins': 'Save the selected analog pins before calibrating.',
+	'analog-calibration-connection-timeout':
+		'The controller did not respond. Check the connection and try again.',
+	'analog-calibration-rest-timeout':
+		'The stick did not settle away from its travel limits. Release it completely and try calibration again.',
+	'analog-calibration-select-pins':
+		'Select at least one analog ADC pin and save before calibrating.',
+	'analog-calibration-save-pins':
+		'Save the selected analog pins before calibrating.',
 	'analog-manual-calibration-mode-stick-1': 'Stick 1 Manual Calibration Mode',
 	'analog-manual-calibration-mode-stick-2': 'Stick 2 Manual Calibration Mode',
 	'analog-auto-calibration-enabled-stick-1': 'Stick 1 Auto Calibration Enabled',
 	'analog-auto-calibration-enabled-stick-2': 'Stick 2 Auto Calibration Enabled',
 	'analog-calibration-failed': 'Calibration failed: {{error}}',
-	'analog-calibration-save-notice': 'Please save configuration to apply calibration values.',
-	'analog-calibration-auto-mode-instruction': 'System will automatically read stick {{stick}} center value on startup. For manual calibration, please uncheck "Auto Calibration" first.',
+	'analog-calibration-save-notice':
+		'Please save configuration to apply calibration values.',
+	'analog-calibration-auto-mode-instruction':
+		'System will automatically read stick {{stick}} center value on startup. For manual calibration, please uncheck "Auto Calibration" first.',
 	'analog-smoothing': 'Analog Smoothing',
 	'smoothing-factor': 'Smoothing Strength (0–10)',
 	'analog-error-label': 'Error Rate',
@@ -192,7 +201,8 @@ export default {
 	'socd-slider-mode-3': 'First Win',
 	'socd-slider-mode-4': 'SOCD Cleaning Off',
 	'profile-slider-header-text': 'Profile Selection Slider',
-	'profile-slider-sub-header-text': 'Note: GPIO pins for the profile slider positions are configured in the Pin Mapping page.',
+	'profile-slider-sub-header-text':
+		'Note: GPIO pins for the profile slider positions are configured in the Pin Mapping page.',
 	'profile-slider-num-positions-label': 'Number of Slider Positions',
 	'profile-slider-default-profile-label': 'Default Profile',
 	'profile-slider-position-label': 'Profile for Position {{position}}',
@@ -206,8 +216,10 @@ export default {
 	'drv8833-rumble-pwm-frequency-label': 'PWM Frequency',
 	'drv8833-rumble-duty-min-label': 'Minimum Duty Cycle',
 	'drv8833-rumble-duty-max-label': 'Maximum Duty Cycle',
-	'tg16-extension-header-text': 'PC Engine/TurboGrafx-16 Extension Configuration',
-	'tg16-extension-sub-header-text': 'Note: If the display is enabled at the same time, this add-on will be disabled.',
+	'tg16-extension-header-text':
+		'PC Engine/TurboGrafx-16 Extension Configuration',
+	'tg16-extension-sub-header-text':
+		'Note: If the display is enabled at the same time, this add-on will be disabled.',
 	'tg16-extension-oe-pin-label': 'OE GPIO Pin',
 	'tg16-extension-select-pin-label': 'Select GPIO Pin',
 	'tg16-extension-data-pin0-label': 'Data GPIO Pin 0 (U_I)',
