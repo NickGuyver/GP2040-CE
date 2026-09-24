@@ -10,9 +10,7 @@ export default {
 	'links-label': 'Enlaces',
 	'macro-label': 'Configuración de Macros',
 	'pin-mapping-label': 'Mapeo de Pines GPIO',
-	'multi-mapping-label': 'Mapeo Múltiple',
 	'peripheral-mapping-label': 'Mapeo de Periféricos',
-	'profile-settings-label': 'Configuración de Perfiles',
 	'reboot-label': 'Reiniciar',
 	'reboot-modal-body': 'Seleccione un modo para reiniciar',
 	'reboot-modal-button-bootsel-label': 'USB (BOOTSEL)',
@@ -21,7 +19,8 @@ export default {
 	'reboot-modal-button-progress-label': 'Reiniciando',
 	'reboot-modal-button-success-label': '¡Listo!',
 	'reboot-modal-label': '¿Reiniciar?',
-	'reboot-modal-success': 'Reinicio completado, esta pestaña del navegador puede cerrarse ahora.',
+	'reboot-modal-success':
+		'Reinicio completado, esta pestaña del navegador puede cerrarse ahora.',
 	'resetSettings-label': 'Restablecer Ajustes',
 	'settings-label': 'Ajustes',
 };

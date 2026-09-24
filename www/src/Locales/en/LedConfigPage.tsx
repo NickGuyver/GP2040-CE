@@ -7,7 +7,6 @@ export default {
 		'turn-off-when-suspended': 'Turn Off When Suspended',
 	},
 	player: {
-		'header-text': 'Player LEDs',
 		'pwm-sub-header-text':
 			'For PWM LEDs, set each LED to a dedicated GPIO pin.',
 		'rgb-sub-header-text': 'For RGB LEDs, Use the layout editor below.',
@@ -15,7 +14,6 @@ export default {
 		'pled-type-off': 'Off',
 		'pled-type-pwm': 'PWM',
 		'pled-type-rgb': 'RGB',
-		'pled-color-label': 'RGB PLED Color',
 		'pled-pin-label': 'PLED #{{pin}} GPIO Pin',
 	},
 	lightCoordsSection: {
@@ -88,13 +86,11 @@ export default {
 	},
 	theme: {
 		'profile-label': 'Active profile',
-		'idle-timout-label':
-			'Disable Lights Timeout (0 is disabled)',
+		'idle-timout-label': 'Disable Lights Timeout (0 is disabled)',
 		'current-led-brightness-label': 'Current Brightness: {{percent}}% of max',
 		'profile-number': 'Profile {{profileNumber}}',
 		'case-animation-label': 'Case animation',
 		'custom-color-label': 'Custom colors',
-		'case-colors-label': 'Case colors',
 		'case-special-color-label': 'Case special color',
 		'idle-animation-label': 'Idle animation',
 		'pressed-fade-out-time-label': 'Pressed fade out time (ms)',
@@ -102,21 +98,17 @@ export default {
 		'context-param-label': 'Tail length: {{value}}%',
 		'context-param-rain-label': 'Intensity',
 		'pressed-animation-label': 'Pressed animation',
-		'pressed-colors-label': 'Pressed colors',
 		'pressed-special-color-label': 'Pressed special color',
 		'idle-Speed-label': 'Idle Effect Speed: {{value}} / 10',
 		'press-Speed-label': 'Pressed Effect Speed: {{value}} / 10',
 		'case-Speed-label': 'Case Effect Speed: {{value}} / 10',
 		'idle-special-color-label': 'Idle special color',
-		'idle-colors-label': 'Idle colors',
 		'switch-enabled-description':
 			'A disabled profile will not be available when using hotkeys to change profile.',
 		'switch-case-light-pressed-label':
 			'Include case lights in pressed animations',
-		'switch-specialpressed-rainbow-label':
-			'Pressed special color is rainbow',
-		'switch-specialnonpressed-rainbow-label':
-			'Idle special color is rainbow',
+		'switch-specialpressed-rainbow-label': 'Pressed special color is rainbow',
+		'switch-specialnonpressed-rainbow-label': 'Idle special color is rainbow',
 		'layout-mode-label': 'Layout mode',
 		'layout-mode-description':
 			'Layout mode allows for manual configuration of LED positions and GPIO pins.',
