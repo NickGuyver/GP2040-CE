@@ -24,9 +24,13 @@ class USBReportScheduler {
 public:
     static USBReportScheduler &getInstance();
 
-    void configure(uint8_t endpoint, uint32_t pollIntervalUs);
+    // One active full-speed interrupt-IN endpoint, scheduled at USB frame boundaries.
+    void configure(uint8_t endpoint);
     void start();
+    static void onSof(uint8_t rhport, uint32_t frameCount);
     void reset();
+    // Relearn a changed input workload without discarding queued digital edges.
+    void resetInputTiming();
     void beginInputProcessing();
     void endInputProcessing();
 
@@ -39,9 +43,9 @@ public:
 private:
     USBReportScheduler() = default;
 
-    static void onSof(uint32_t frameCount);
-
-    bool shouldDefer(USBReportPriority const &priority, uint32_t now) const;
+    void resetPollTiming();
+    void noteHostPoll(uint32_t frame);
+    bool shouldDefer(USBReportPriority const &priority) const;
     bool replacePendingInBuffer(void const *report, uint16_t len);
     bool tryReplace(void const *report, uint16_t len,
                     USBReportPriority const &priority);
@@ -49,13 +53,18 @@ private:
                     bool replaceable);
 
     uint8_t endpoint = 0;
-    uint32_t pollIntervalUs = 0;
     uint32_t inputStartUs = 0;
     uint32_t maxInputIntervalUs = 0;
     uint32_t maxInputProcessingUs = 0;
     uint32_t replacementGuardUs = 0;
     volatile uint32_t lastSofUs = 0;
     volatile uint32_t sofEpoch = 0;
+    uint32_t lastSofFrame = 0;
+    uint32_t lastNakCheckSofEpoch = 0;
+    uint32_t lastPollSofEpoch = 0;
+    uint32_t pollIntervalFrames = 0;
+    bool lastPollValid = false;
+    bool pollTimingReady = false;
     uint32_t completedSofEpoch = 0;
     uint32_t pendingSofEpoch = 0;
     USBReportPriority deliveredPriority;

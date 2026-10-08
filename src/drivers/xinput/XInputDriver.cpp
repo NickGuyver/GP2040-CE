@@ -32,11 +32,6 @@ static uint8_t endpoint_in = 0;
 static uint8_t endpoint_out = 0;
 static uint8_t xinput_out_buffer[XINPUT_OUT_SIZE] = {};
 static XInputAuthData * xinputAuthData = nullptr;
-// Full-speed bInterval units are milliseconds. This conversion is USB
-// protocol data, not a tuned scheduler margin.
-static constexpr uint32_t MICROSECONDS_PER_MILLISECOND = 1000;
-static constexpr uint32_t XINPUT_POLL_INTERVAL_US =
-    XINPUT_REPORT_POLL_INTERVAL_MS * MICROSECONDS_PER_MILLISECOND;
 
 static bool isDigitalAxisAction(GpioAction action) {
     switch (action) {
@@ -55,6 +50,7 @@ static bool isDigitalAxisAction(GpioAction action) {
 }
 
 void XInputDriver::updateAnalogScheduling(uint32_t appliedProfileNumber) {
+    USBReportScheduler::getInstance().resetInputTiming();
     Storage &storage = Storage::getInstance();
     analogSchedulingProfile = appliedProfileNumber;
     analogSchedulingAllowed = false;
@@ -141,8 +137,7 @@ typedef enum
 } XInputPLEDPattern;
 
 static void xinput_init(void) {
-	USBReportScheduler::getInstance().configure(
-        XINPUT_REPORT_ENDPOINT_IN, XINPUT_POLL_INTERVAL_US);
+	USBReportScheduler::getInstance().configure(XINPUT_REPORT_ENDPOINT_IN);
 }
 
 static void xinput_reset(uint8_t rhport) {
@@ -466,7 +461,7 @@ bool __not_in_flash_func(XInputDriver::process)(Gamepad * gamepad) {
 
     //---------------
     if (memcmp(xinput_out_buffer, featureBuffer, XINPUT_OUT_SIZE) != 0) { // check if new write to xinput_out_buffer from xinput_xfer_callback
-        memcpy(featureBuffer, xinput_out_buffer, XINPUT_OUT_SIZE, false);
+        memcpy(featureBuffer, xinput_out_buffer, XINPUT_OUT_SIZE);
         switch (featureBuffer[0]) {
             case 0x00:
                 if (featureBuffer[1] == 0x08) {

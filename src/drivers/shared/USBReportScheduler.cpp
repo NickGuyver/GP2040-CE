@@ -7,6 +7,7 @@
 
 #include "tusb.h"
 #include "device/usbd_pvt.h"
+#include "device/dcd.h"
 
 #include "pico/platform.h"
 #include "pico/time.h"
@@ -16,6 +17,10 @@
 #include "hardware/sync.h"
 
 #include <cstring>
+
+// The RP USB controller uses full-speed frames. Endpoint bInterval controls
+// host polling, not SOF cadence; never use it as a frame deadline.
+static constexpr uint32_t USB_FULL_SPEED_FRAME_US = 1000;
 
 // time_us_32() reports whole microseconds. Add one unit when publishing an
 // observed duration so truncation cannot turn it into an unsafe lower bound.
@@ -30,15 +35,19 @@ USBReportScheduler &__not_in_flash_func(USBReportScheduler::getInstance)() {
     return instance;
 }
 
-void USBReportScheduler::configure(uint8_t endpoint, uint32_t pollIntervalUs) {
+void USBReportScheduler::configure(uint8_t endpoint) {
     this->endpoint = endpoint;
-    this->pollIntervalUs = pollIntervalUs;
     reset();
 }
 
 void USBReportScheduler::start() {
-    if (endpoint != 0) {
-        tud_sof_isr_set(&USBReportScheduler::onSof);
+    uint8_t const epNum = endpoint & 0x0f;
+    if ((endpoint & 0x80) && epNum != 0 && epNum < USB_NUM_ENDPOINTS) {
+        // Latch polls while unarmed without enabling another USB interrupt.
+        usb_hw->ep_nak_stall_status = 1u << (2 * epNum);
+        usb_dpram->ep_ctrl[epNum - 1].in |= EP_CTRL_INTERRUPT_ON_NAK;
+        // The class SOF callback runs in the ISR; no queued application SOF event.
+        dcd_sof_enable(0, true);
     }
 }
 
@@ -48,11 +57,12 @@ void USBReportScheduler::reset() {
     sofEpoch = 0;
     sofTimingReady = false;
     reportPendingAtSof = false;
+    lastSofFrame = 0;
+    lastNakCheckSofEpoch = 0;
+    resetPollTiming();
     restore_interrupts(irqState);
 
-    inputStartUs = 0;
-    maxInputIntervalUs = 0;
-    maxInputProcessingUs = 0;
+    resetInputTiming();
     replacementGuardUs = 0;
     completedSofEpoch = 0;
     pendingSofEpoch = 0;
@@ -60,22 +70,55 @@ void USBReportScheduler::reset() {
     pendingPriority = {};
     pendingOwned = false;
     pendingPriorityUnchanged = false;
-    inputTimingStarted = false;
-    inputTimingReady = false;
     replacementTimingReady = false;
     completedSofEpochValid = false;
     pendingSofEpochValid = false;
 }
 
-void __not_in_flash_func(USBReportScheduler::onSof)(uint32_t frameCount) {
-    (void)frameCount;
+void USBReportScheduler::resetInputTiming() {
+    inputStartUs = 0;
+    maxInputIntervalUs = 0;
+    maxInputProcessingUs = 0;
+    inputTimingStarted = false;
+    inputTimingReady = false;
+}
 
+void USBReportScheduler::resetPollTiming() {
+    lastPollValid = false;
+    pollTimingReady = false;
+    pollIntervalFrames = 0;
+}
+
+void __not_in_flash_func(USBReportScheduler::noteHostPoll)(uint32_t frame) {
+    if (lastPollValid) {
+        uint32_t const interval = frame - lastPollSofEpoch;
+        if (interval == 0) {
+            return;
+        }
+        // Require two agreeing gaps; a changed cadence immediately falls back.
+        pollTimingReady = interval == pollIntervalFrames;
+        pollIntervalFrames = interval;
+    }
+    lastPollSofEpoch = frame;
+    lastPollValid = true;
+}
+
+void __not_in_flash_func(USBReportScheduler::onSof)(uint8_t rhport, uint32_t frameCount) {
+    (void)rhport;
     USBReportScheduler &scheduler = getInstance();
+    uint32_t const now = time_us_32();
+    // Also catch pauses hidden by the USB frame counter's 11-bit wrap.
+    if (scheduler.sofTimingReady &&
+        (((frameCount - scheduler.lastSofFrame) & USB_SOF_RD_BITS) != 1 ||
+         now - scheduler.lastSofUs >= 2 * USB_FULL_SPEED_FRAME_US)) {
+        scheduler.resetPollTiming();
+    }
+    scheduler.lastSofFrame = frameCount;
     uint8_t const epNum = scheduler.endpoint & 0x0f;
     scheduler.reportPendingAtSof = epNum != 0 && epNum < USB_NUM_ENDPOINTS &&
         (usb_dpram->ep_buf_ctrl[epNum].in & (USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL)) ==
             (USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL);
-    scheduler.lastSofUs = time_us_32();
+    scheduler.lastSofUs = now;
     ++scheduler.sofEpoch;
     scheduler.sofTimingReady = true;
 }
@@ -86,6 +129,20 @@ void __not_in_flash_func(USBReportScheduler::beginInputProcessing)() {
     }
 
     uint32_t const now = time_us_32();
+    uint32_t const irqState = save_and_disable_interrupts();
+    uint32_t const nakMask = 1u << (2 * (endpoint & 0x0f));
+    if (usb_hw->ep_nak_stall_status & nakMask) {
+        usb_hw->ep_nak_stall_status = nakMask; // W1C: leave other endpoints alone.
+        // Only attribute a NAK when both observations are in the same frame.
+        if (sofTimingReady && lastNakCheckSofEpoch == sofEpoch &&
+            !(usb_hw->ints & USB_INTS_DEV_SOF_BITS)) {
+            noteHostPoll(sofEpoch);
+        } else {
+            resetPollTiming();
+        }
+    }
+    lastNakCheckSofEpoch = sofEpoch;
+    restore_interrupts(irqState);
     if (inputTimingStarted) {
         uint32_t const intervalUs = boundedElapsedUs(now - inputStartUs);
         if (intervalUs > maxInputIntervalUs) {
@@ -109,16 +166,19 @@ void __not_in_flash_func(USBReportScheduler::endInputProcessing)() {
 }
 
 bool __not_in_flash_func(USBReportScheduler::shouldDefer)(
-        USBReportPriority const &priority, uint32_t now) const {
+        USBReportPriority const &priority) const {
     USBReportPriority const &baseline = pendingOwned ? pendingPriority : deliveredPriority;
     if (priority != baseline || !inputTimingReady) {
         return false;
     }
 
+    uint32_t const now = time_us_32();
     uint32_t const irqState = save_and_disable_interrupts();
     uint32_t const sofUs = lastSofUs;
-    uint32_t const sofIntervalUs = pollIntervalUs;
     bool const timingReady = sofTimingReady;
+    bool const pollReady = pollTimingReady;
+    uint32_t const framesSincePoll = sofEpoch - lastPollSofEpoch;
+    uint32_t const pollFrames = pollIntervalFrames;
     restore_interrupts(irqState);
 
     if (!timingReady) {
@@ -126,8 +186,17 @@ bool __not_in_flash_func(USBReportScheduler::shouldDefer)(
     }
 
     uint32_t const phaseUs = now - sofUs;
-    if (phaseUs >= sofIntervalUs) {
+    if (phaseUs >= USB_FULL_SPEED_FRAME_US) {
         return false;
+    }
+
+    if (!pendingOwned && pollReady) {
+        if (framesSincePoll >= pollFrames) {
+            return false; // The prediction expired; never wait another period.
+        }
+        if (framesSincePoll + 1 < pollFrames) {
+            return true; // Keep analog-only data in software until the final frame.
+        }
     }
 
     uint32_t const currentProcessingUs = now - inputStartUs;
@@ -141,7 +210,7 @@ bool __not_in_flash_func(USBReportScheduler::shouldDefer)(
         replacementUs = reportProcessingUs;
     }
 
-    uint32_t const remainingUs = sofIntervalUs - phaseUs;
+    uint32_t const remainingUs = USB_FULL_SPEED_FRAME_US - phaseUs;
     if (replacementUs >= remainingUs ||
         currentProcessingUs >= maxInputIntervalUs) {
         return false;
@@ -159,8 +228,7 @@ bool __not_in_flash_func(USBReportScheduler::shouldDefer)(
 bool __not_in_flash_func(USBReportScheduler::sendDirectReport)(
         void const *report, uint16_t len, USBReportPriority const &priority,
         bool allowAnalogScheduling) {
-    uint32_t const now = time_us_32();
-    if (allowAnalogScheduling && shouldDefer(priority, now)) {
+    if (allowAnalogScheduling && shouldDefer(priority)) {
         return false;
     }
 
@@ -174,7 +242,7 @@ bool __not_in_flash_func(USBReportScheduler::sendDirectReport)(
         restore_interrupts(irqState);
 
         bool const queued = usbd_edpt_xfer(
-            0, endpoint, const_cast<uint8_t *>(static_cast<uint8_t const *>(report)), len);
+            0, endpoint, const_cast<uint8_t *>(static_cast<uint8_t const *>(report)), len, false);
         usbd_edpt_release(0, endpoint);
         if (queued) {
             uint32_t const queuedIrqState = save_and_disable_interrupts();
@@ -243,6 +311,11 @@ void USBReportScheduler::onReportComplete() {
     completedSofEpochValid = sofTimingReady && pendingOwned &&
         (pendingSofEpoch == sofEpoch || reportPendingAtSof) &&
         !(usb_hw->ints & USB_INTS_DEV_SOF_BITS);
+    if (completedSofEpochValid) {
+        noteHostPoll(sofEpoch);
+    } else {
+        resetPollTiming();
+    }
     restore_interrupts(irqState);
 
     if (pendingOwned) {
@@ -259,6 +332,9 @@ void USBReportScheduler::onReportFailed() {
     }
 
     completedSofEpochValid = false;
+    uint32_t const irqState = save_and_disable_interrupts();
+    resetPollTiming();
+    restore_interrupts(irqState);
     if (!pendingOwned) {
         return;
     }
@@ -291,8 +367,8 @@ bool __no_inline_not_in_flash_func(USBReportScheduler::replacePendingInBuffer)(
         pendingSofEpochValid && completedSofEpochValid &&
         pendingSofEpoch == sofEpoch && completedSofEpoch == sofEpoch &&
         !(usb_hw->ints & USB_INTS_DEV_SOF_BITS) &&
-        phaseUs < pollIntervalUs &&
-        guardUs < pollIntervalUs - phaseUs;
+        phaseUs < USB_FULL_SPEED_FRAME_US &&
+        guardUs < USB_FULL_SPEED_FRAME_US - phaseUs;
     if (!inWindow) {
         restore_interrupts(irqState);
         return false;
@@ -333,7 +409,7 @@ bool __no_inline_not_in_flash_func(USBReportScheduler::replacePendingInBuffer)(
         // observes a crossing, retain the actual remaining phase as the new
         // runtime guard so the same boundary cannot be crossed again.
         uint32_t const crossedBoundaryGuardUs = boundedElapsedUs(
-            pollIntervalUs - phaseUs);
+            USB_FULL_SPEED_FRAME_US - phaseUs);
         if (crossedBoundaryGuardUs > replacementGuardUs) {
             replacementGuardUs = crossedBoundaryGuardUs;
         }
