@@ -7,6 +7,7 @@
 #include "drivermanager.h"
 #include "pico/platform.h"
 
+#include <algorithm>
 #include <math.h>
 
 #define ADC_MAX ((1 << 12) - 1) // 4095
@@ -14,9 +15,30 @@
 #define ANALOG_MAX 1.0f
 #define ANALOG_CENTER 0.5f
 #define ANALOG_MINIMUM 0.0f
+#define ANALOG_MIN_DEADZONE_BAND 0.01f
 
 bool AnalogInput::available() {
     return Storage::getInstance().getAddonOptions().analogOptions.enabled;
+}
+
+bool AnalogInput::isAdcPin(Pin_t pin) {
+    return pin >= ADC_PIN_OFFSET && pin < ADC_PIN_OFFSET + NUM_ADC_CHANNELS - 1;
+}
+
+uint16_t AnalogInput::readCalibrationSample(Pin_t pin) {
+    if (!isAdcPin(pin)) {
+        return 0;
+    }
+
+    adc_gpio_init(pin);
+    adc_select_input(pin - ADC_PIN_OFFSET);
+    uint32_t sum = 0;
+    
+    for (int i = 0; i < 16; i++) {
+        sum += adc_read();
+    }
+
+    return (sum + 8) / 16;
 }
 
 void AnalogInput::setup() {
@@ -28,7 +50,7 @@ void AnalogInput::setup() {
     adc_pairs[0].analog_invert = analogOptions.analogAdc1Invert;
     adc_pairs[0].analog_dpad = analogOptions.analogAdc1Mode;
     adc_pairs[0].ema_option = analogOptions.analog_smoothing;
-    adc_pairs[0].ema_smoothing = analogOptions.smoothing_factor / 1000.0f;
+    adc_pairs[0].ema_smoothing = analogOptions.smoothing_factor;
     adc_pairs[0].error_rate = analogOptions.analog_error / 1000.0f;
     adc_pairs[0].in_deadzone = analogOptions.inner_deadzone / 100.0f;
     adc_pairs[0].out_deadzone = analogOptions.outer_deadzone / 100.0f;
@@ -36,12 +58,16 @@ void AnalogInput::setup() {
     adc_pairs[0].forced_circularity = analogOptions.forced_circularity;
     adc_pairs[0].joystick_center_x = analogOptions.joystick_center_x;
     adc_pairs[0].joystick_center_y = analogOptions.joystick_center_y;
+    adc_pairs[0].x_min = analogOptions.joystick_min_x;
+    adc_pairs[0].x_max = analogOptions.joystick_max_x;
+    adc_pairs[0].y_min = analogOptions.joystick_min_y;
+    adc_pairs[0].y_max = analogOptions.joystick_max_y;
     adc_pairs[1].x_pin = analogOptions.analogAdc2PinX;
     adc_pairs[1].y_pin = analogOptions.analogAdc2PinY;
     adc_pairs[1].analog_invert = analogOptions.analogAdc2Invert;
     adc_pairs[1].analog_dpad = analogOptions.analogAdc2Mode;
     adc_pairs[1].ema_option = analogOptions.analog_smoothing2;
-    adc_pairs[1].ema_smoothing = analogOptions.smoothing_factor2 / 1000.0f;
+    adc_pairs[1].ema_smoothing = analogOptions.smoothing_factor2;
     adc_pairs[1].error_rate = analogOptions.analog_error2 / 1000.0f;
     adc_pairs[1].in_deadzone = analogOptions.inner_deadzone2 / 100.0f;
     adc_pairs[1].out_deadzone = analogOptions.outer_deadzone2 / 100.0f;
@@ -49,21 +75,42 @@ void AnalogInput::setup() {
     adc_pairs[1].forced_circularity = analogOptions.forced_circularity2;
     adc_pairs[1].joystick_center_x = analogOptions.joystick_center_x2;
     adc_pairs[1].joystick_center_y = analogOptions.joystick_center_y2;
+    adc_pairs[1].x_min = analogOptions.joystick_min_x2;
+    adc_pairs[1].x_max = analogOptions.joystick_max_x2;
+    adc_pairs[1].y_min = analogOptions.joystick_min_y2;
+    adc_pairs[1].y_max = analogOptions.joystick_max_y2;
     
 
     // Setup defaults and helpers
     for (int i = 0; i < ADC_COUNT; i++) {
-        deadzone_span[i] = adc_pairs[i].out_deadzone - adc_pairs[i].in_deadzone;
-        ema_previous_weight[i] = 1.0f - adc_pairs[i].ema_smoothing;
+        if (!isAdcPin(adc_pairs[i].x_pin)) {
+            adc_pairs[i].x_pin = -1;
+        }
+        if (!isAdcPin(adc_pairs[i].y_pin)) {
+            adc_pairs[i].y_pin = -1;
+        }
+
         adc_pairs[i].x_pin_adc = adc_pairs[i].x_pin - ADC_PIN_OFFSET;
         adc_pairs[i].y_pin_adc = adc_pairs[i].y_pin - ADC_PIN_OFFSET;
+        adc_pairs[i].in_deadzone = std::clamp(adc_pairs[i].in_deadzone, ANALOG_MINIMUM, ANALOG_MAX - ANALOG_MIN_DEADZONE_BAND);
+        adc_pairs[i].out_deadzone = std::clamp(adc_pairs[i].out_deadzone, adc_pairs[i].in_deadzone + ANALOG_MIN_DEADZONE_BAND, ANALOG_MAX);
+        deadzone_span[i] = adc_pairs[i].out_deadzone - adc_pairs[i].in_deadzone;
         adc_pairs[i].x_value = ANALOG_CENTER;
         adc_pairs[i].y_value = ANALOG_CENTER;
         adc_pairs[i].xy_magnitude = 0.0f;
         adc_pairs[i].x_magnitude = 0.0f;
         adc_pairs[i].y_magnitude = 0.0f;
-        adc_pairs[i].x_ema = 0.0f;
-        adc_pairs[i].y_ema = 0.0f;
+        adc_pairs[i].x_ema_initialized = false;
+        adc_pairs[i].y_ema_initialized = false;
+        adc_pairs[i].x_ema = ANALOG_CENTER;
+        adc_pairs[i].y_ema = ANALOG_CENTER;
+        const float strength = adc_pairs[i].ema_smoothing;
+        adc_pairs[i].ema_option &= strength > 0.0f && strength <= 10.0f;
+        adc_pairs[i].ema_smoothing = adc_pairs[i].ema_option ? powf(10.0f, -0.5f * strength) : 0.0f;
+        
+        if (adc_pairs[i].error_rate <= 0.0f || adc_pairs[i].error_rate > 1.0f) {
+            adc_pairs[i].error_rate = 1.0f;
+        }
     }
 
     // Intialize and auto center X/Y for each pair
@@ -71,8 +118,7 @@ void AnalogInput::setup() {
         if(isValidPin(adc_pairs[i].x_pin)) {
             adc_gpio_init(adc_pairs[i].x_pin);
             if (adc_pairs[i].auto_calibration) {
-                adc_select_input(adc_pairs[i].x_pin - ADC_PIN_OFFSET);
-                adc_pairs[i].x_center = adc_read();
+                adc_pairs[i].x_center = readCalibrationSample(adc_pairs[i].x_pin);
             } else {
                 // if auto calibration is disabled, attempt to use stored manual calibration value
                 adc_pairs[i].x_center = adc_pairs[i].joystick_center_x;
@@ -81,8 +127,7 @@ void AnalogInput::setup() {
         if(isValidPin(adc_pairs[i].y_pin)) {
             adc_gpio_init(adc_pairs[i].y_pin);
             if (adc_pairs[i].auto_calibration) {
-                adc_select_input(adc_pairs[i].y_pin - ADC_PIN_OFFSET);
-                adc_pairs[i].y_center = adc_read();
+                adc_pairs[i].y_center = readCalibrationSample(adc_pairs[i].y_pin);
             } else {
                 // if auto calibration is disabled, attempt to use stored manual calibration value
                 adc_pairs[i].y_center = adc_pairs[i].joystick_center_y;
@@ -95,7 +140,7 @@ void __force_inline AnalogInput::processStick(
         int stick_num, Gamepad *gamepad, uint32_t joystickMax) {
     adc_instance &stick = adc_pairs[stick_num];
     stick.xy_magnitude = magnitudeCalculation(stick_num, stick);
-    if (stick.xy_magnitude < stick.in_deadzone) {
+    if (stick.xy_magnitude <= stick.in_deadzone) {
         stick.x_value = ANALOG_CENTER;
         stick.y_value = ANALOG_CENTER;
     } else {
@@ -108,9 +153,9 @@ void __force_inline AnalogInput::processStick(
 
     // If MID is 0x8000, clamp our max to 0xFFFF in case we are at 0x10000. 0x7FFF will max at 0xFFFE.
     uint16_t const clampedX = static_cast<uint16_t>(std::min(
-        static_cast<uint32_t>(joystickMax * stick.x_value), UINT32_C(0xFFFF)));
+        static_cast<uint32_t>(joystickMax * std::min(stick.x_value, 1.0f)), UINT32_C(0xFFFF)));
     uint16_t const clampedY = static_cast<uint16_t>(std::min(
-        static_cast<uint32_t>(joystickMax * stick.y_value), UINT32_C(0xFFFF)));
+        static_cast<uint32_t>(joystickMax * std::min(stick.y_value, 1.0f)), UINT32_C(0xFFFF)));
 
     if (stick.analog_dpad == DpadMode::DPAD_MODE_LEFT_ANALOG) {
         gamepad->state.lx = clampedX;
@@ -129,14 +174,13 @@ void __not_in_flash_func(AnalogInput::process)() {
         uint8_t stick;
         bool xAxis;
         Pin_t input;
-        uint16_t center;
     };
 
     AxisSample samples[ADC_COUNT * 2];
     uint sampleCount = 0;
     for (int i = 0; i < ADC_COUNT; i++) {
-        if (isValidPin(adc_pairs[i].x_pin)) samples[sampleCount++] = { (uint8_t)i, true, adc_pairs[i].x_pin_adc, adc_pairs[i].x_center };
-        if (isValidPin(adc_pairs[i].y_pin)) samples[sampleCount++] = { (uint8_t)i, false, adc_pairs[i].y_pin_adc, adc_pairs[i].y_center };
+        if (isValidPin(adc_pairs[i].x_pin)) samples[sampleCount++] = { (uint8_t)i, true, adc_pairs[i].x_pin_adc };
+        if (isValidPin(adc_pairs[i].y_pin)) samples[sampleCount++] = { (uint8_t)i, false, adc_pairs[i].y_pin_adc };
     }
 
     bool stickProcessed[ADC_COUNT] = {};
@@ -163,19 +207,25 @@ void __not_in_flash_func(AnalogInput::process)() {
 
         AxisSample& axis = samples[sample];
         adc_instance& stick = adc_pairs[axis.stick];
-        float value = normalizePin(axis.stick, adcValue, axis.center);
+        float value = axis.xAxis
+            ? normalizePin(adcValue, stick.x_center, stick.x_min, stick.x_max)
+            : normalizePin(adcValue, stick.y_center, stick.y_min, stick.y_max);
         if (axis.xAxis) {
             if (stick.analog_invert == InvertMode::INVERT_X || stick.analog_invert == InvertMode::INVERT_XY) value = ANALOG_MAX - value;
             if (stick.ema_option) {
-                value = emaCalculation(axis.stick, value, stick.x_ema);
+                if (stick.x_ema_initialized)
+                    value = emaCalculation(axis.stick, value, stick.x_ema);
                 stick.x_ema = value;
+                stick.x_ema_initialized = true;
             }
             stick.x_value = value;
         } else {
             if (stick.analog_invert == InvertMode::INVERT_Y || stick.analog_invert == InvertMode::INVERT_XY) value = ANALOG_MAX - value;
             if (stick.ema_option) {
-                value = emaCalculation(axis.stick, value, stick.y_ema);
+                if (stick.y_ema_initialized)
+                    value = emaCalculation(axis.stick, value, stick.y_ema);
                 stick.y_ema = value;
+                stick.y_ema_initialized = true;
             }
             stick.y_value = value;
         }
@@ -193,27 +243,18 @@ void __not_in_flash_func(AnalogInput::process)() {
     }
 }
 
-float __not_in_flash_func(AnalogInput::normalizePin)(int stick_num, uint16_t adc_value, uint16_t center) {
-    // Apply calibration only if auto calibration is enabled or manual calibration has been performed
-    // Manual calibration is considered performed if the center value is not 0 (default)
-    if (adc_pairs[stick_num].auto_calibration || center != 0) {
-        if (adc_value > center) {
-            adc_value = map(adc_value, center, ADC_MAX, ADC_MAX / 2, ADC_MAX);
-        } else if (adc_value == center) {
-            adc_value = ADC_MAX / 2;
-        } else {
-            adc_value = map(adc_value, 0, center, 0, ADC_MAX / 2);
-        }
+float __not_in_flash_func(AnalogInput::normalizePin)(uint16_t adc_value, uint32_t center, uint32_t minimum, uint32_t maximum) {
+    // Only a valid calibration changes the raw ADC scaling
+    if (minimum < center && center < maximum && maximum <= ADC_MAX) {
+        const float delta = (float)adc_value - center;
+        const float span = adc_value < center ? center - minimum : maximum - center;
+        return std::clamp(ANALOG_CENTER + ANALOG_CENTER * (delta / span), ANALOG_MINIMUM, ANALOG_MAX);
     }
     return ((float)adc_value) / ADC_MAX;
 }
 
 float AnalogInput::emaCalculation(int stick_num, float ema_value, float ema_previous) {
-    return (adc_pairs[stick_num].ema_smoothing * ema_value) + (ema_previous_weight[stick_num] * ema_previous);
-}
-
-uint16_t AnalogInput::map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    return ema_previous + adc_pairs[stick_num].ema_smoothing * (ema_value - ema_previous);
 }
 
 float AnalogInput::magnitudeCalculation(int stick_num, adc_instance & adc_inst) {
@@ -225,7 +266,7 @@ float AnalogInput::magnitudeCalculation(int stick_num, adc_instance & adc_inst) 
 void __not_in_flash_func(AnalogInput::radialDeadzone)(int stick_num, adc_instance & adc_inst) {
     float scaling_factor = (adc_inst.xy_magnitude - adc_pairs[stick_num].in_deadzone) / deadzone_span[stick_num];
     if (adc_pairs[stick_num].forced_circularity == true) {
-        scaling_factor = (scaling_factor <= ANALOG_CENTER) ? scaling_factor : ANALOG_CENTER;
+        scaling_factor = std::fmin(scaling_factor, ANALOG_CENTER * adc_inst.error_rate);
     }
     adc_inst.x_value = ((adc_inst.x_magnitude / adc_inst.xy_magnitude) * scaling_factor) + ANALOG_CENTER;
     adc_inst.y_value = ((adc_inst.y_magnitude / adc_inst.xy_magnitude) * scaling_factor) + ANALOG_CENTER;

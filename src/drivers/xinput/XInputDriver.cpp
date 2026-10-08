@@ -217,7 +217,7 @@ static bool xinput_xfer_callback(uint8_t rhport, uint8_t ep_addr, xfer_result_t 
             USBReportScheduler::getInstance().onReportFailed();
         }
     } else if (ep_addr == endpoint_out) {
-        usbd_edpt_xfer(0, endpoint_out, xinput_out_buffer, XINPUT_OUT_SIZE);
+        usbd_edpt_xfer(0, endpoint_out, xinput_out_buffer, XINPUT_OUT_SIZE, false);
     }
 
     return true;
@@ -321,7 +321,7 @@ void XInputDriver::initialize() {
         .open = xinput_open,
         .control_xfer_cb = xinput_device_control_request,
         .xfer_cb = xinput_xfer_callback,
-        .sof = NULL
+        .sof = USBReportScheduler::onSof
     };
 
     xAuthDriver = nullptr;
@@ -460,13 +460,13 @@ bool __not_in_flash_func(XInputDriver::process)(Gamepad * gamepad) {
         (endpoint_out != 0) && (!usbd_edpt_busy(0, endpoint_out)))
     {
         usbd_edpt_claim(0, endpoint_out);									 // Take control of OUT endpoint
-        usbd_edpt_xfer(0, endpoint_out, xinput_out_buffer, XINPUT_OUT_SIZE); 		 // Retrieve report buffer
+        usbd_edpt_xfer(0, endpoint_out, xinput_out_buffer, XINPUT_OUT_SIZE, false); 		 // Retrieve report buffer
         usbd_edpt_release(0, endpoint_out);									 // Release control of OUT endpoint
     }
 
     //---------------
     if (memcmp(xinput_out_buffer, featureBuffer, XINPUT_OUT_SIZE) != 0) { // check if new write to xinput_out_buffer from xinput_xfer_callback
-        memcpy(featureBuffer, xinput_out_buffer, XINPUT_OUT_SIZE);
+        memcpy(featureBuffer, xinput_out_buffer, XINPUT_OUT_SIZE, false);
         switch (featureBuffer[0]) {
             case 0x00:
                 if (featureBuffer[1] == 0x08) {
