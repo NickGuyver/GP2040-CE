@@ -102,8 +102,6 @@ static bool waiting_ack = false;
 static uint32_t waiting_ack_timeout=0;
 static uint32_t timer_wait_for_announce;
 static bool xbox_one_powered_on;
-static uint8_t report_led_mode;
-static uint8_t report_led_brightness;
 
 // Report Queue for big report sizes from dongle
 #include <queue>
@@ -116,7 +114,7 @@ static std::queue<report_queue_t> report_queue;
 
 #define XGIP_ACK_WAIT_TIMEOUT 2000
 
-#define CFG_TUD_XBONE 8
+#define CFG_TUD_XBONE 1 // Xbox One advertises one GIP data interface.
 #define CFG_TUD_XINPUT_TX_BUFSIZE 64
 #define CFG_TUD_XINPUT_RX_BUFSIZE 64
 
@@ -160,6 +158,13 @@ const OS_COMPATIBLE_ID_DESCRIPTOR_SINGLE DevCompatIDsOne = {
     Reserved3 : {0}
 };
 
+static void publish_player_led(uint8_t mode, uint8_t brightness) {
+    GamepadAuxPlayerID &playerID = Storage::getInstance().GetProcessedGamepad()->auxState.playerID;
+    playerID.ledValue = mode;
+    playerID.ledBlinkOn = brightness;
+    playerID.active = true;
+}
+
 static void xbone_reset(uint8_t rhport) {
     (void)rhport;
     USBReportScheduler::getInstance().reset();
@@ -168,7 +173,7 @@ static void xbone_reset(uint8_t rhport) {
     input_report_sent = false;
     waiting_ack = false;
     if (xboxOneAuthData != nullptr) xboxOneAuthData->authCompleted = false;
-    report_led_mode = 0; // 0 = OFF
+    publish_player_led(0, 0);
     while(!report_queue.empty())
         report_queue.pop();
 
@@ -332,9 +337,7 @@ bool xbone_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result,
             // Power Mode On!
             xbox_one_powered_on = true;
         } else if ( command == GIP_CMD_LED_ON && incomingXGIP->getDataLength() >= 3 ) {
-            // Set all player LEDs to on
-            report_led_mode = incomingXGIP->getData()[1]; // 1 - turn LEDs on
-            report_led_brightness = incomingXGIP->getData()[2]; // 2 - brightness (ignored for now)
+            publish_player_led(incomingXGIP->getData()[1], incomingXGIP->getData()[2]);
 
             // Send our descriptor if descriptor is waiting (Player 2)
             if ( xboneDriverState == XboxOneDriverState::WAIT_DESCRIPTOR_REQUEST ) {
@@ -418,7 +421,6 @@ void XBOneDriver::initialize() {
 
     xboxOneAuthData = nullptr;
 
-    xbone_led_mode = 0;
     analogSchedulingProfile = Storage::getInstance().GetGamepad()->lastReinitProfileNumber;
     analogSchedulingAllowed = !hasDigitalAxisMappings();
 }
@@ -452,14 +454,6 @@ bool XBOneDriver::process(Gamepad * gamepad) {
     // Perform update
     this->update();
 
-    // Check if LEDs need to turn on
-    if ( xbone_led_mode != report_led_mode ) {
-        Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
-        processedGamepad->auxState.playerID.active = true;
-        processedGamepad->auxState.playerID.ledValue = report_led_mode;
-        processedGamepad->auxState.playerID.ledBlinkOn = report_led_brightness;
-    }
-
     // Publish one neutral report while authentication is pending.
     if ( xboxOneAuthData->authCompleted == false ) {
         if (input_report_sent) return false;
@@ -487,8 +481,8 @@ bool XBOneDriver::process(Gamepad * gamepad) {
             keep_alive_sequence++; // will rollover
             if ( keep_alive_sequence == 0 )
                 keep_alive_sequence = 1;
+            return true;
         }
-        return true;
     }
     
     // Virtual Keycode for Guide Button
@@ -518,8 +512,8 @@ bool XBOneDriver::process(Gamepad * gamepad) {
             // On success, update our guide pressed state and virtual key code state
             virtual_keycode_sequence = new_sequence;
             xb1_guide_pressed = !xb1_guide_pressed;
+            return true;
         }
-        return true;
     }
 
     USBReportScheduler &scheduler = USBReportScheduler::getInstance();
@@ -615,8 +609,6 @@ bool XBOneDriver::getAuthSent() {
 }
 
 bool XBOneDriver::send_xbone_usb(uint8_t const *report, uint16_t report_size) {
-    // Protocol traffic can wait for auth; relearn gameplay timing afterwards.
-    USBReportScheduler::getInstance().resetInputTiming();
     uint8_t itf = 0;
     xboned_interface_t *p_xbone = _xboned_itf;
     for (;; itf++, p_xbone++) {
@@ -629,7 +621,10 @@ bool XBOneDriver::send_xbone_usb(uint8_t const *report, uint16_t report_size) {
     if (report_size > sizeof(p_xbone->epin_buf) || !tud_ready() ||
         !usbd_edpt_claim(TUD_OPT_RHPORT, p_xbone->ep_in)) return false;
     memcpy(p_xbone->epin_buf, report, report_size);
-    if (usbd_edpt_xfer(TUD_OPT_RHPORT, p_xbone->ep_in, p_xbone->epin_buf, report_size, false)) return true;
+    if (usbd_edpt_xfer(TUD_OPT_RHPORT, p_xbone->ep_in, p_xbone->epin_buf, report_size, false)) {
+        USBReportScheduler::getInstance().resetInputTiming();
+        return true;
+    }
     usbd_edpt_release(TUD_OPT_RHPORT, p_xbone->ep_in);
     return false;
 }
